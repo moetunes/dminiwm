@@ -61,7 +61,7 @@ It allows the "normal" method of tiling window managers(with the new window as t
 --------------
 
 26/11/11
-	Added a click to focus option
+	Added ability to change back to last opened desktop.
 
 ###Status
 ------
@@ -76,6 +76,7 @@ There are more options in the config file than the original catwm.
   * Added ability to resize the window on the top of the stack
   * Added having applications open on specified desktop
   * Added a click to focus option
+  * Added ability to change back to last opened desktop.
 
 
 ###Installation
