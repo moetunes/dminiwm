@@ -1,4 +1,4 @@
- /* config.h for dminiwm.c [ 0.2.0 ]
+ /* config.h for dminiwm.c [ 0.2.1 ]
  *
  *  Started from catwm 31/12/10
  *  Bad window error checking and numlock checking used from
@@ -104,8 +104,8 @@ static key keys[] = {
     {  MOD1|ControlMask, XK_r,          spawn,             {.com = rebootcmd}},
     {  MOD1|ControlMask, XK_s,          spawn,             {.com = shutdowncmd}},
 // Window key + shortcut
-    {  MOD4,             XK_Right,      next_desktop,      {NULL}},
-    {  MOD4,             XK_Left,       prev_desktop,      {NULL}},
+    {  MOD4,             XK_Right,      rotate_desktop,    {.i = 1}},
+    {  MOD4,             XK_Left,       rotate_desktop,    {.i = -1}},
     {  MOD4,             XK_e,          spawn,             {.com = mailcmd}},
     {  MOD4,             XK_f,          spawn,             {.com = firefoxcmd}},
     {  MOD4,             XK_w,          spawn,             {.com = webcmd}},

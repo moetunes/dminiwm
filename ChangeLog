@@ -1,8 +1,14 @@
 28/11/11
+  Replaced next/prev_desktop function with shorter rotate_desktop function
+  (thanks to c00kiemon5ter)
+
+28/11/11
   Added last desktop function for switching back to the last opened desktop
+  (thanks to c00kimon5ter)
 
 26/11/11
   Added option to click on a window to focus it
+  (thanks to richo4)
 
 21/11/11
   Fix for transient windows not being managed

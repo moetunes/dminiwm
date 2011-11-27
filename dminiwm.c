@@ -1,4 +1,4 @@
-/* dminiwm.c [ 0.2.0 ]
+/* dminiwm.c [ 0.2.1 ]
 *
 *  I started this from catwm 31/12/10
 *  Bad window error checking and numlock checking used from
@@ -112,14 +112,13 @@ static void kill_client();
 static void maprequest(XEvent *e);
 static void move_down();
 static void move_up();
-static void next_desktop();
 static void next_win();
-static void prev_desktop();
 static void prev_win();
 static void quit();
 static void remove_window(Window w);
 static void resize_master(const Arg arg);
 static void resize_stack(const Arg arg);
+static void rotate_desktop(const Arg arg);
 static void save_desktop(int i);
 static void select_desktop(int i);
 static void send_kill_signal(Window w);
@@ -385,26 +384,10 @@ void last_desktop() {
     change_desktop(a);
 }
 
-void next_desktop() {
-    int tmp = current_desktop;
-    if(tmp == TABLENGTH(desktops)-1)
-        tmp = 0;
-    else
-        tmp++;
-
-    Arg a = {.i = tmp};
-    change_desktop(a);
-}
-
-void prev_desktop() {
-    int tmp = current_desktop;
-    if(tmp == 0)
-        tmp = TABLENGTH(desktops)-1;
-    else
-        tmp--;
-
-    Arg a = {.i = tmp};
-    change_desktop(a);
+void rotate_desktop(const Arg arg) {
+    int ndesktops = TABLENGTH(desktops);
+    Arg a = {.i = (current_desktop + ndesktops + arg.i) % ndesktops};
+     change_desktop(a);
 }
 
 void client_to_desktop(const Arg arg) {
@@ -876,6 +859,7 @@ void quit() {
         logger(" \033[0;33mThanks for using!");
         XCloseDisplay(dis);
         logger("\033[0;31mforced shutdown");
+        exit (0);
     }
 
     bool_quit = 1;
