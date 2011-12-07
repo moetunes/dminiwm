@@ -661,17 +661,19 @@ void configurerequest(XEvent *e) {
     // Paste from DWM, thx again \o/
     XConfigureRequestEvent *ev = &e->xconfigurerequest;
     XWindowChanges wc;
+    int y = 0;
 
     wc.x = ev->x;
-    wc.y = ev->y;
+    if(TOP_PANEL == 0) y = PANEL_HEIGHT;
+    wc.y = ev->y + y;
     if(ev->width < sw-BORDER_WIDTH)
         wc.width = ev->width;
     else
-        wc.width = sw-BORDER_WIDTH;
+        wc.width = sw+BORDER_WIDTH;
     if(ev->height < sh-BORDER_WIDTH)
         wc.height = ev->height;
     else
-        wc.height = sh-BORDER_WIDTH;
+        wc.height = sh+BORDER_WIDTH;
     wc.border_width = ev->border_width;
     wc.sibling = ev->above;
     wc.stack_mode = ev->detail;
@@ -688,7 +690,7 @@ void maprequest(XEvent *e) {
     for(c=head;c;c=c->next)
         if(ev->window == c->win) {
             XMapWindow(dis,ev->window);
-            XMoveResizeWindow(dis,c->win,-BORDER_WIDTH,-BORDER_WIDTH,sw+BORDER_WIDTH,sh+BORDER_WIDTH);
+            XMoveResizeWindow(dis,c->win,0,0,sw,sh);
             return;
         }
 
