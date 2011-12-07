@@ -28,7 +28,7 @@
 #define MOD1            Mod1Mask
 #define MOD4            Mod4Mask
 #define MASTER_SIZE     0.52
-#define TOP_PANEL       1  /* 1=Don't 0=Have the panel at the top instead of the bottom */
+#define TOP_PANEL       0  /* 1=Don't 0=Have the panel at the top instead of the bottom */
 #define PANEL_HEIGHT	18 /* 0 for no space for a panel */
 #define BORDER_WIDTH    2
 #define ATTACH_ASIDE    1  /* 0=TRUE, 1=New window is master */

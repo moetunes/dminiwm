@@ -720,12 +720,12 @@ void maprequest(XEvent *e) {
                     XMapWindow(dis, ev->window);
                     XSetInputFocus(dis,ev->window,RevertToParent,CurrentTime);
                     XRaiseWindow(dis,ev->window);
+                    if(temp)
+                        XFree(temp);
                     return;
                 }
             }
         }
-        if(temp)
-         XFree(temp);
     }
 
     XClassHint ch = {0};
