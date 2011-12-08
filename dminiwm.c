@@ -248,6 +248,7 @@ void remove_window(Window w) {
             }
 
             free(c);
+            current->win = head->win;
             save_desktop(current_desktop);
             tile();
             update_current();
@@ -372,8 +373,9 @@ void change_desktop(const Arg arg) {
 
     // Map all windows
     if(head != NULL)
-        for(c=head;c;c=c->next)
-            XMapWindow(dis,c->win);
+        if(mode != 1)
+            for(c=head;c;c=c->next)
+                XMapWindow(dis,c->win);
 
     tile();
     update_current();
@@ -462,7 +464,10 @@ void tile() {
                 break;
             case 1: /* Fullscreen */
                 for(c=head;c;c=c->next) {
-                    XMoveResizeWindow(dis,c->win,0,y,sw+2*BORDER_WIDTH,sh+2*BORDER_WIDTH);
+                    if(current == c) {
+                        XMapWindow(dis, c->win);
+                        XMoveResizeWindow(dis,c->win,0,y,sw+2*BORDER_WIDTH,sh+2*BORDER_WIDTH);
+                    }
                 }
                 break;
             case 2: /* Horizontal */
