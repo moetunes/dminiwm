@@ -1,4 +1,4 @@
-/* dminiwm.c [ 0.2.1 ]
+/* dminiwm.c [ 0.2.3 ]
 *
 *  I started this from catwm 31/12/10
 *  Bad window error checking and numlock checking used from
@@ -248,7 +248,7 @@ void remove_window(Window w) {
             }
 
             free(c);
-            current->win = head->win;
+            //current->win = head->win;
             save_desktop(current_desktop);
             tile();
             update_current();
@@ -444,6 +444,7 @@ void tile() {
 
     // If only one window
     if(head != NULL && head->next == NULL) {
+        if(mode == 1) XMapWindow(dis, head->win);
         XMoveResizeWindow(dis,head->win,0,y,sw+2*BORDER_WIDTH,sh+2*BORDER_WIDTH);
     }
     else if(head != NULL) {
@@ -592,7 +593,7 @@ void switch_vertical() {
             }
         mode = 0;
         master_size = sw * MASTER_SIZE;
-	tile();
+	    tile();
         update_current();
     }
 }
