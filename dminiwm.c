@@ -373,7 +373,7 @@ void change_desktop(const Arg arg) {
 
     // Map all windows
     if(head != NULL)
-        if(mode != 1)
+        if(mode != 1 || head->next == NULL) 
             for(c=head;c;c=c->next)
                 XMapWindow(dis,c->win);
 
@@ -582,7 +582,14 @@ void update_current() {
 }
 
 void switch_vertical() {
+    client *c;
+
     if(mode != 0) {
+        if(mode == 1)
+            for(c=head;c;c=c->next) {
+                XUnmapWindow(dis, c->win);
+                XMapWindow(dis, c->win);
+            }
         mode = 0;
         master_size = sw * MASTER_SIZE;
 	tile();
@@ -599,7 +606,14 @@ void switch_fullscreen() {
 }
 
 void switch_horizontal() {
+    client *c;
+
     if(mode != 2) {
+        if(mode == 1)
+            for(c=head;c;c=c->next) {
+                XUnmapWindow(dis, c->win);
+                XMapWindow(dis, c->win);
+            }
         mode = 2;
         master_size = sh * MASTER_SIZE;
         tile();
@@ -608,7 +622,14 @@ void switch_horizontal() {
 }
 
 void switch_grid() {
+    client *c;
+
     if(mode != 3) {
+        if(mode == 1)
+            for(c=head;c;c=c->next) {
+                XUnmapWindow(dis, c->win);
+                XMapWindow(dis, c->win);
+            }
         mode = 3;
         master_size = sw * MASTER_SIZE;
         tile();
