@@ -1,4 +1,4 @@
-/* dminiwm.c [ 0.2.3 ]
+/* dminiwm.c [ 0.2.4 ]
 *
 *  I started this from catwm 31/12/10
 *  Bad window error checking and numlock checking used from
@@ -129,10 +129,7 @@ static void start();
 static void swap_master();
 static void tile();
 static void last_desktop();
-static void switch_fullscreen();
-static void switch_grid();
-static void switch_horizontal();
-static void switch_vertical();
+static void switch_mode(const Arg arg);
 static void update_current();
 
 // Include configuration file (need struct key)
@@ -213,8 +210,7 @@ void add_window(Window w) {
     current = c;
     save_desktop(current_desktop);
     // for folow mouse
-    if(FOLLOW_MOUSE == 0)
-        XSelectInput(dis, c->win, EnterWindowMask);
+    if(FOLLOW_MOUSE == 0) XSelectInput(dis, c->win, EnterWindowMask);
 }
 
 void remove_window(Window w) {
@@ -228,6 +224,7 @@ void remove_window(Window w) {
                 free(head);
                 head = NULL;
                 current = NULL;
+                growth = 0;
                 save_desktop(current_desktop);
                 return;
             }
@@ -248,8 +245,8 @@ void remove_window(Window w) {
             }
 
             free(c);
-            //current->win = head->win;
             save_desktop(current_desktop);
+            if(mode == 1) XMapWindow(dis, current->win);
             tile();
             update_current();
             return;
@@ -372,10 +369,13 @@ void change_desktop(const Arg arg) {
     select_desktop(arg.i);
 
     // Map all windows
-    if(head != NULL)
-        if(mode != 1 || head->next == NULL) 
+    if(head != NULL) {
+        if(mode != 1) {
             for(c=head;c;c=c->next)
                 XMapWindow(dis,c->win);
+        } else
+            XMapWindow(dis, current->win);
+    }
 
     tile();
     update_current();
@@ -439,14 +439,12 @@ void tile() {
     int y = 0;
 
     // For a top panel
-    if(TOP_PANEL == 0)
-        y = PANEL_HEIGHT;
+    if(TOP_PANEL == 0) y = PANEL_HEIGHT;
 
     // If only one window
-    if(head != NULL && head->next == NULL) {
-        if(mode == 1) XMapWindow(dis, head->win);
+    if(head != NULL && head->next == NULL)
         XMoveResizeWindow(dis,head->win,0,y,sw+2*BORDER_WIDTH,sh+2*BORDER_WIDTH);
-    }
+
     else if(head != NULL) {
         switch(mode) {
             case 0: /* Vertical */
@@ -455,7 +453,6 @@ void tile() {
 
                 // Stack
                 for(c=head->next;c;c=c->next) ++n;
-                if(n == 1) growth = 0;
                 XMoveResizeWindow(dis,head->next->win,master_size + BORDER_WIDTH,y,sw-master_size-(2*BORDER_WIDTH),(sh/n)+growth - BORDER_WIDTH);
                 y += (sh/n)+growth;
                 for(c=head->next->next;c;c=c->next) {
@@ -464,12 +461,8 @@ void tile() {
                 }
                 break;
             case 1: /* Fullscreen */
-                for(c=head;c;c=c->next) {
-                    if(current == c) {
-                        XMapWindow(dis, c->win);
-                        XMoveResizeWindow(dis,c->win,0,y,sw+2*BORDER_WIDTH,sh+2*BORDER_WIDTH);
-                    }
-                }
+                XMapWindow(dis, current->win);
+                XMoveResizeWindow(dis,current->win,0,y,sw+2*BORDER_WIDTH,sh+2*BORDER_WIDTH);
                 break;
             case 2: /* Horizontal */
             	// Master window
@@ -477,7 +470,6 @@ void tile() {
 
                 // Stack
                 for(c=head->next;c;c=c->next) ++n;
-                if(n == 1) growth = 0;
                 XMoveResizeWindow(dis,head->next->win,0,y+master_size + BORDER_WIDTH,(sw/n)+growth-BORDER_WIDTH,sh-master_size-(2*BORDER_WIDTH));
                 x = (sw/n)+growth;
                 for(c=head->next->next;c;c=c->next) {
@@ -582,60 +574,25 @@ void update_current() {
     XSync(dis, False);
 }
 
-void switch_vertical() {
+void switch_mode(const Arg arg) {
     client *c;
 
-    if(mode != 0) {
-        if(mode == 1)
-            for(c=head;c;c=c->next) {
-                XUnmapWindow(dis, c->win);
-                XMapWindow(dis, c->win);
-            }
-        mode = 0;
-        master_size = sw * MASTER_SIZE;
-	    tile();
-        update_current();
+    if(mode == arg.i) return;
+    if(mode == 1 && head->next != NULL) {
+        XUnmapWindow(dis, current->win);
+        for(c=head;c;c=c->next)
+            XMapWindow(dis, c->win);
     }
-}
 
-void switch_fullscreen() {
-    if(mode != 1) {
-        mode = 1;
-        tile();
-        update_current();
-    }
-}
+    mode = arg.i;
+    if(mode == 0 || mode == 3) master_size = sw * MASTER_SIZE;
+    if(mode == 1 && head->next != NULL)
+        for(c=head;c;c=c->next)
+            XUnmapWindow(dis, c->win);
 
-void switch_horizontal() {
-    client *c;
-
-    if(mode != 2) {
-        if(mode == 1)
-            for(c=head;c;c=c->next) {
-                XUnmapWindow(dis, c->win);
-                XMapWindow(dis, c->win);
-            }
-        mode = 2;
-        master_size = sh * MASTER_SIZE;
-        tile();
-        update_current();
-    }
-}
-
-void switch_grid() {
-    client *c;
-
-    if(mode != 3) {
-        if(mode == 1)
-            for(c=head;c;c=c->next) {
-                XUnmapWindow(dis, c->win);
-                XMapWindow(dis, c->win);
-            }
-        mode = 3;
-        master_size = sw * MASTER_SIZE;
-        tile();
-        update_current();
-    }
+    if(mode == 2) master_size = sh * MASTER_SIZE;
+    tile();
+    update_current();
 }
 
 void resize_master(const Arg arg) {

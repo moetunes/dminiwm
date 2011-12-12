@@ -1,4 +1,4 @@
- /* config.h for dminiwm.c [ 0.2.3 ]
+ /* config.h for dminiwm.c [ 0.2.4 ]
  *
  *  Started from catwm 31/12/10
  *  Bad window error checking and numlock checking used from
@@ -95,10 +95,10 @@ static key keys[] = {
     {  MOD1|ShiftMask,   XK_j,          move_up,           {NULL}},
     {  MOD1|ShiftMask,   XK_k,          move_down,         {NULL}},
     {  MOD1|ShiftMask,   XK_Return,     swap_master,       {NULL}},
-    {  MOD1|ShiftMask,   XK_g,          switch_grid,       {NULL}},
-    {  MOD1|ShiftMask,   XK_h,          switch_horizontal, {NULL}},
-    {  MOD1|ShiftMask,   XK_m,          switch_fullscreen, {NULL}},
-    {  MOD1|ShiftMask,   XK_v,          switch_vertical,   {NULL}},
+    {  MOD1|ShiftMask,   XK_g,          switch_mode,       {.i = 3}}, // grid
+    {  MOD1|ShiftMask,   XK_h,          switch_mode,       {.i = 2}}, // horizontal
+    {  MOD1|ShiftMask,   XK_m,          switch_mode,       {.i = 1}}, // fullscreen
+    {  MOD1|ShiftMask,   XK_v,          switch_mode,       {.i = 0}}, // vertical
 // Control + alt + shortcut
     {  MOD1|ControlMask, XK_q,          quit,              {NULL}},
     {  MOD1|ControlMask, XK_r,          spawn,             {.com = rebootcmd}},
