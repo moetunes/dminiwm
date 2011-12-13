@@ -387,8 +387,7 @@ void last_desktop() {
 }
 
 void rotate_desktop(const Arg arg) {
-    int ndesktops = TABLENGTH(desktops);
-    Arg a = {.i = (current_desktop + ndesktops + arg.i) % ndesktops};
+    Arg a = {.i = (current_desktop + TABLENGTH(desktops) + arg.i) % TABLENGTH(desktops)};
      change_desktop(a);
 }
 
@@ -684,6 +683,7 @@ void maprequest(XEvent *e) {
         XMapWindow(dis, ev->window);
         XSetInputFocus(dis,ev->window,RevertToParent,CurrentTime);
         XRaiseWindow(dis,ev->window);
+        XFree(&trans);
         return;
     }
 
