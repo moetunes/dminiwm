@@ -1,4 +1,4 @@
-/* dminiwm.c [ 0.2.4 ]
+/* dminiwm.c [ 0.2.5 ]
 *
 *  I started this from catwm 31/12/10
 *  Bad window error checking and numlock checking used from
@@ -104,6 +104,7 @@ static void configurenotify(XEvent *e);
 static void configurerequest(XEvent *e);
 static void destroynotify(XEvent *e);
 static void enternotify(XEvent *e);
+static void follow_client_to_desktop(const Arg arg);
 static void logger(const char* e);
 static unsigned long getcolor(const char* color);
 static void grabkeys();
@@ -391,6 +392,28 @@ void rotate_desktop(const Arg arg) {
      change_desktop(a);
 }
 
+void follow_client_to_desktop(const Arg arg) {
+    client *tmp = current;
+    int tmp2 = current_desktop;
+
+    if(arg.i == current_desktop || current == NULL)
+        return;
+
+    // Add client to desktop
+    select_desktop(arg.i);
+    add_window(tmp->win);
+    save_desktop(arg.i);
+
+    // Remove client from current desktop
+    select_desktop(tmp2);
+    XUnmapWindow(dis,tmp->win);
+    remove_window(tmp->win);
+    save_desktop(tmp2);
+    tile();
+    update_current();
+    change_desktop(arg);
+}
+
 void client_to_desktop(const Arg arg) {
     client *tmp = current;
     int tmp2 = current_desktop;
@@ -410,8 +433,6 @@ void client_to_desktop(const Arg arg) {
     save_desktop(tmp2);
     tile();
     update_current();
-    if(FOLLOW_WINDOW == 0)
-        change_desktop(arg);
 }
 
 void save_desktop(int i) {
