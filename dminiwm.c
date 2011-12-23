@@ -105,6 +105,7 @@ static void configurerequest(XEvent *e);
 static void destroynotify(XEvent *e);
 static void enternotify(XEvent *e);
 static void follow_client_to_desktop(const Arg arg);
+static void last_desktop();
 static void logger(const char* e);
 static unsigned long getcolor(const char* color);
 static void grabkeys();
@@ -128,9 +129,9 @@ static void sigchld(int unused);
 static void spawn(const Arg arg);
 static void start();
 static void swap_master();
-static void tile();
-static void last_desktop();
 static void switch_mode(const Arg arg);
+static void tile();
+static void toggle_panel();
 static void update_current();
 
 // Include configuration file (need struct key)
@@ -144,6 +145,7 @@ static int previous_desktop;
 static int growth;
 static int master_size;
 static int mode;
+static int panel_size;
 static int sh;
 static int sw;
 static int screen;
@@ -459,7 +461,7 @@ void tile() {
     int y = 0;
 
     // For a top panel
-    if(TOP_PANEL == 0) y = PANEL_HEIGHT;
+    if(TOP_PANEL == 0) y = panel_size;
 
     // If only one window
     if(head != NULL && head->next == NULL)
@@ -625,6 +627,19 @@ void resize_stack(const Arg arg) {
     tile();
 }
 
+void toggle_panel() {
+    if(PANEL_HEIGHT > 0) {
+        if(panel_size >0) {
+            sh += panel_size;
+            panel_size = 0;
+        } else {
+            panel_size = PANEL_HEIGHT;
+            sh -= panel_size;
+        }
+        tile();
+    }
+}
+
 /* ********************** Keyboard Management ********************** */
 void grabkeys() {
     int i;
@@ -668,7 +683,7 @@ void configurerequest(XEvent *e) {
     int y = 0;
 
     wc.x = ev->x;
-    if(TOP_PANEL == 0) y = PANEL_HEIGHT;
+    if(TOP_PANEL == 0) y = panel_size;
     wc.y = ev->y + y;
     if(ev->width < sw-BORDER_WIDTH)
         wc.width = ev->width;
@@ -898,8 +913,9 @@ void setup() {
     root = RootWindow(dis,screen);
 
     // Screen width and height
+    panel_size = PANEL_HEIGHT;
     sw = XDisplayWidth(dis,screen) - BORDER_WIDTH;
-    sh = (XDisplayHeight(dis,screen) - PANEL_HEIGHT) - BORDER_WIDTH;
+    sh = (XDisplayHeight(dis,screen) - panel_size) - BORDER_WIDTH;
 
     // Colors
     win_focus = getcolor(FOCUS);

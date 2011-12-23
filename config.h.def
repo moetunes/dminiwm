@@ -88,6 +88,7 @@ static key keys[] = {
     {  MOD1,             XK_p,          resize_stack,      {.i = 10}},
     {  MOD1,             XK_o,          resize_stack,      {.i = -10}},
     {  MOD1,             XK_Tab,        last_desktop,      {NULL}},
+    {  MOD1,             XK_b,          toggle_panel,      {NULL}},
     {  MOD1,             XK_Return,     spawn,             {.com = urxvtcmd}},
     {  MOD1,             XK_Up,	        spawn,             {.com = volupcmd}},
     {  MOD1,             XK_Down,       spawn,             {.com = voldowncmd}},
