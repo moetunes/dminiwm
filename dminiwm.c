@@ -139,7 +139,6 @@ static void update_current();
 
 // Variable
 static Display *dis;
-static int bool_quit;
 static int current_desktop;
 static int previous_desktop;
 static int growth;
@@ -865,39 +864,17 @@ void quit() {
     Window *children;
     int i;
     unsigned int nchildren;
-    XEvent ev;
 
-    /*
-     * if a client refuses to terminate itself,
-     * we kill every window remaining the brutal way.
-     * Since we're stuck in the while(nchildren > 0) { ... } loop
-     * we can't exit through the main method.
-     * This all happens if MOD+q is pushed a second time.
-     */
-    if(bool_quit == 1) {
-        XUngrabKey(dis, AnyKey, AnyModifier, root);
-        XDestroySubwindows(dis, root);
-        logger(" \033[0;33mThanks for using!");
-        XCloseDisplay(dis);
-        logger("\033[0;31mforced shutdown");
-        exit (0);
-    }
-
-    bool_quit = 1;
     XQueryTree(dis, root, &root_return, &parent, &children, &nchildren);
     for(i = 0; i < nchildren; i++) {
         send_kill_signal(children[i]);
     }
-    //keep alive until all windows are killed
-    while(nchildren > 0) {
-        XQueryTree(dis, root, &root_return, &parent, &children, &nchildren);
-        XNextEvent(dis,&ev);
-        if(events[ev.type])
-            events[ev.type](&ev);
-    }
 
     XUngrabKey(dis,AnyKey,AnyModifier,root);
+    XDestroySubwindows(dis, root);
     logger("\033[0;34mYou Quit : Thanks for using!");
+    
+    exit (0);
 }
 
 void logger(const char* e) {
@@ -940,9 +917,6 @@ void setup() {
     // Default stack
     mode = DEFAULT_MODE;
     growth = 0;
-
-    // For exiting
-    bool_quit = 0;
 
     // List of client
     head = NULL;
@@ -1019,7 +993,7 @@ void start() {
     XEvent ev;
 
     // Main loop, just dispatch events (thx to dwm ;)
-    while(!bool_quit && !XNextEvent(dis,&ev)) {
+    while(!XNextEvent(dis,&ev)) {
         if(events[ev.type])
             events[ev.type](&ev);
     }
