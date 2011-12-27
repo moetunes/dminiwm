@@ -861,6 +861,7 @@ void kill_client() {
     } else {
         XKillClient(dis, current->win);
     }
+    remove_window(current->win);
 }
 
 void quit() {
