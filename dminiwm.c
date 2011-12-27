@@ -469,7 +469,6 @@ void tile() {
     else if(head != NULL) {
         switch(mode) {
             case 0: /* Vertical */
-            	master_size = sw * MASTER_SIZE;
             	// Master window
                 XMoveResizeWindow(dis,head->win,0,y,master_size - BORDER_WIDTH,sh - BORDER_WIDTH);
 
@@ -487,7 +486,6 @@ void tile() {
                 XMoveResizeWindow(dis,current->win,0,y,sw+2*BORDER_WIDTH,sh+2*BORDER_WIDTH);
                 break;
             case 2: /* Horizontal */
-            	master_size = sh * MASTER_SIZE;
             	// Master window
                 XMoveResizeWindow(dis,head->win,0,y,sw-BORDER_WIDTH,master_size - BORDER_WIDTH);
 
@@ -501,7 +499,6 @@ void tile() {
                 }
                 break;
             case 3: { // Grid
-                master_size = sw * MASTER_SIZE;
                 int xpos = 0;
                 int wdt = 0;
                 int ht = 0;
@@ -609,10 +606,12 @@ void switch_mode(const Arg arg) {
     }
 
     mode = arg.i;
+    if(mode == 0 || mode == 3) master_size = sw * MASTER_SIZE;
     if(mode == 1 && head->next != NULL)
         for(c=head;c;c=c->next)
             XUnmapWindow(dis, c->win);
 
+    if(mode == 2) master_size = sh * MASTER_SIZE;
     tile();
     update_current();
 }
@@ -932,6 +931,12 @@ void setup() {
     // List of client
     head = NULL;
     current = NULL;
+
+    // Master size
+    if(mode == 2)
+        master_size = sh*MASTER_SIZE;
+    else
+        master_size = sw*MASTER_SIZE;
 
     // Set up all desktop
     int i;
