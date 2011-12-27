@@ -123,7 +123,6 @@ static void resize_stack(const Arg arg);
 static void rotate_desktop(const Arg arg);
 static void save_desktop(int i);
 static void select_desktop(int i);
-static void send_kill_signal(Window w);
 static void setup();
 static void sigchld(int unused);
 static void spawn(const Arg arg);
@@ -139,6 +138,7 @@ static void update_current();
 
 // Variable
 static Display *dis;
+static int bool_quit;
 static int current_desktop;
 static int previous_desktop;
 static int growth;
@@ -256,7 +256,7 @@ void remove_window(Window w) {
     }
 }
 
-void kill_client() {
+/* void kill_client() {
     if(current != NULL) {
         //send delete signal to window
         XEvent ke;
@@ -270,7 +270,7 @@ void kill_client() {
         send_kill_signal(current->win);
         remove_window(current->win);
 	}
-}
+} */
 
 void next_win() {
     client *c;
@@ -838,7 +838,7 @@ void buttonpressed(XEvent *e) {
             }
 }
 
-void send_kill_signal(Window w) {
+void kill_client() {
     Atom *protocols;
     int n, i;
     int can_delete = 0;
@@ -846,21 +846,34 @@ void send_kill_signal(Window w) {
     Atom wm_delete_window;
     wm_delete_window = XInternAtom(dis, "WM_DELETE_WINDOW", False); 
 
-    if (XGetWMProtocols(dis, w, &protocols, &n) != 0)
+    if (XGetWMProtocols(dis, current->win, &protocols, &n) != 0)
         for (i=0;i<n;i++)
             if (protocols[i] == wm_delete_window) can_delete = 1;
 
     if(can_delete == 1) {
         ke.type = ClientMessage;
-        ke.xclient.window = w;
+        ke.xclient.window = current->win;
         ke.xclient.message_type = XInternAtom(dis, "WM_PROTOCOLS", True);
         ke.xclient.format = 32;
         ke.xclient.data.l[0] = XInternAtom(dis, "WM_DELETE_WINDOW", True);
         ke.xclient.data.l[1] = CurrentTime;
-        XSendEvent(dis, w, False, NoEventMask, &ke);
+        XSendEvent(dis, current->win, False, NoEventMask, &ke);
     } else {
-        XKillClient(dis, w);
+        XKillClient(dis, current->win);
     }
+}
+
+void quit() {
+    client *c;
+    int i;
+
+    XUngrabKey(dis,AnyKey,AnyModifier,root);
+    for(i=0;i<TABLENGTH(desktops);i++) {
+        select_desktop(i);
+        for(c=head;c;c=c->next)
+            remove_window(c->win);
+    }
+    bool_quit = 1;
 }
 
 unsigned long getcolor(const char* color) {
@@ -872,33 +885,6 @@ unsigned long getcolor(const char* color) {
         exit(1);
     }
     return c.pixel;
-}
-
-void quit() {
-    Window root_return, parent;
-    Window *children;
-    int i;
-    unsigned int nchildren;
-    XEvent ev;
-
-    XQueryTree(dis, root, &root_return, &parent, &children, &nchildren);
-    for(i = 0; i < nchildren; i++) {
-        send_kill_signal(children[i]);
-    }
-
-    //keep alive until all windows are killed
-    while(nchildren > 0) {
-        XQueryTree(dis, root, &root_return, &parent, &children, &nchildren);
-        XNextEvent(dis,&ev);
-        if(events[ev.type])
-            events[ev.type](&ev);
-    }
-
-    XUngrabKey(dis,AnyKey,AnyModifier,root);
-    XDestroySubwindows(dis, root);
-    logger("\033[0;34mYou Quit : Thanks for using!");
-
-    exit (0);
 }
 
 void logger(const char* e) {
@@ -967,6 +953,8 @@ void setup() {
     // To catch maprequest and destroynotify (if other wm running)
     XSelectInput(dis,root,SubstructureNotifyMask|SubstructureRedirectMask);
     XSetErrorHandler(xerror);
+    // For exiting
+    bool_quit = 0;
     logger("\033[0;32mWe're up and running!");
 }
 
@@ -1011,7 +999,7 @@ void start() {
     XEvent ev;
 
     // Main loop, just dispatch events (thx to dwm ;)
-    while(!XNextEvent(dis,&ev)) {
+    while(!bool_quit && !XNextEvent(dis,&ev)) {
         if(events[ev.type])
             events[ev.type](&ev);
     }
