@@ -1,4 +1,4 @@
-/* dminiwm.c [ 0.2.5 ]
+/* dminiwm.c [ 0.2.6 ]
 *
 *  I started this from catwm 31/12/10
 *  Bad window error checking and numlock checking used from
@@ -469,6 +469,7 @@ void tile() {
     else if(head != NULL) {
         switch(mode) {
             case 0: /* Vertical */
+            	master_size = sw * MASTER_SIZE;
             	// Master window
                 XMoveResizeWindow(dis,head->win,0,y,master_size - BORDER_WIDTH,sh - BORDER_WIDTH);
 
@@ -486,6 +487,7 @@ void tile() {
                 XMoveResizeWindow(dis,current->win,0,y,sw+2*BORDER_WIDTH,sh+2*BORDER_WIDTH);
                 break;
             case 2: /* Horizontal */
+            	master_size = sh * MASTER_SIZE;
             	// Master window
                 XMoveResizeWindow(dis,head->win,0,y,sw-BORDER_WIDTH,master_size - BORDER_WIDTH);
 
@@ -499,6 +501,7 @@ void tile() {
                 }
                 break;
             case 3: { // Grid
+                master_size = sw * MASTER_SIZE;
                 int xpos = 0;
                 int wdt = 0;
                 int ht = 0;
@@ -606,12 +609,10 @@ void switch_mode(const Arg arg) {
     }
 
     mode = arg.i;
-    if(mode == 0 || mode == 3) master_size = sw * MASTER_SIZE;
     if(mode == 1 && head->next != NULL)
         for(c=head;c;c=c->next)
             XUnmapWindow(dis, c->win);
 
-    if(mode == 2) master_size = sh * MASTER_SIZE;
     tile();
     update_current();
 }
@@ -838,14 +839,28 @@ void buttonpressed(XEvent *e) {
 }
 
 void send_kill_signal(Window w) {
+    Atom *protocols;
+    int n, i;
+    int can_delete = 0;
     XEvent ke;
-    ke.type = ClientMessage;
-    ke.xclient.window = w;
-    ke.xclient.message_type = XInternAtom(dis, "WM_PROTOCOLS", True);
-    ke.xclient.format = 32;
-    ke.xclient.data.l[0] = XInternAtom(dis, "WM_DELETE_WINDOW", True);
-    ke.xclient.data.l[1] = CurrentTime;
-    XSendEvent(dis, w, False, NoEventMask, &ke);
+    Atom wm_delete_window;
+    wm_delete_window = XInternAtom(dis, "WM_DELETE_WINDOW", False); 
+
+    if (XGetWMProtocols(dis, w, &protocols, &n) != 0)
+        for (i=0;i<n;i++)
+            if (protocols[i] == wm_delete_window) can_delete = 1;
+
+    if(can_delete == 1) {
+        ke.type = ClientMessage;
+        ke.xclient.window = w;
+        ke.xclient.message_type = XInternAtom(dis, "WM_PROTOCOLS", True);
+        ke.xclient.format = 32;
+        ke.xclient.data.l[0] = XInternAtom(dis, "WM_DELETE_WINDOW", True);
+        ke.xclient.data.l[1] = CurrentTime;
+        XSendEvent(dis, w, False, NoEventMask, &ke);
+    } else {
+        XKillClient(dis, w);
+    }
 }
 
 unsigned long getcolor(const char* color) {
@@ -864,16 +879,25 @@ void quit() {
     Window *children;
     int i;
     unsigned int nchildren;
+    XEvent ev;
 
     XQueryTree(dis, root, &root_return, &parent, &children, &nchildren);
     for(i = 0; i < nchildren; i++) {
         send_kill_signal(children[i]);
     }
 
+    //keep alive until all windows are killed
+    while(nchildren > 0) {
+        XQueryTree(dis, root, &root_return, &parent, &children, &nchildren);
+        XNextEvent(dis,&ev);
+        if(events[ev.type])
+            events[ev.type](&ev);
+    }
+
     XUngrabKey(dis,AnyKey,AnyModifier,root);
     XDestroySubwindows(dis, root);
     logger("\033[0;34mYou Quit : Thanks for using!");
-    
+
     exit (0);
 }
 
@@ -921,12 +945,6 @@ void setup() {
     // List of client
     head = NULL;
     current = NULL;
-
-    // Master size
-    if(mode == 2)
-        master_size = sh*MASTER_SIZE;
-    else
-        master_size = sw*MASTER_SIZE;
 
     // Set up all desktop
     int i;

@@ -1,3 +1,6 @@
+27/12/11
+  A better send_kill_signal function so we can have a better quit function
+
 24/12/11
   Added keyboard shortcut to toggle the panel
   Changed quit function to exit on first try
