@@ -1,8 +1,9 @@
-/* dminiwm.c [ 0.2.6 ]
+/* dminiwm.c [ 0.2.8 ]
 *
 *  I started this from catwm 31/12/10
 *  Bad window error checking and numlock checking used from
 *  2wm at http://hg.suckless.org/2wm/
+*  See the dwm license at http://hg.suckless.org/dwm/raw-file/tip/LICENSE
 *
 *  This program is free software: you can redistribute it and/or modify
 *  it under the terms of the GNU General Public License as published by
@@ -111,6 +112,7 @@ static unsigned long getcolor(const char* color);
 static void grabkeys();
 static void keypress(XEvent *e);
 static void kill_client();
+static void kill_client_now(Window w);
 static void maprequest(XEvent *e);
 static void move_down();
 static void move_up();
@@ -838,6 +840,11 @@ void buttonpressed(XEvent *e) {
 }
 
 void kill_client() {
+    kill_client_now(current->win);
+    remove_window(current->win);
+}
+
+void kill_client_now(Window w) {
     Atom *protocols;
     int n, i;
     int can_delete = 0;
@@ -845,35 +852,39 @@ void kill_client() {
     Atom wm_delete_window;
     wm_delete_window = XInternAtom(dis, "WM_DELETE_WINDOW", False); 
 
-    if (XGetWMProtocols(dis, current->win, &protocols, &n) != 0)
+    if (XGetWMProtocols(dis, w, &protocols, &n) != 0)
         for (i=0;i<n;i++)
             if (protocols[i] == wm_delete_window) can_delete = 1;
 
     if(can_delete == 1) {
         ke.type = ClientMessage;
-        ke.xclient.window = current->win;
+        ke.xclient.window = w;
         ke.xclient.message_type = XInternAtom(dis, "WM_PROTOCOLS", True);
         ke.xclient.format = 32;
         ke.xclient.data.l[0] = XInternAtom(dis, "WM_DELETE_WINDOW", True);
         ke.xclient.data.l[1] = CurrentTime;
-        XSendEvent(dis, current->win, False, NoEventMask, &ke);
-    } else {
-        XKillClient(dis, current->win);
-    }
-    remove_window(current->win);
+        XSendEvent(dis, w, False, NoEventMask, &ke);
+    } else XKillClient(dis, w);
 }
 
 void quit() {
-    client *c;
+    Window root_return, parent;
+    Window *children;
     int i;
+    unsigned int nchildren;
 
-    XUngrabKey(dis,AnyKey,AnyModifier,root);
-    for(i=0;i<TABLENGTH(desktops);i++) {
-        select_desktop(i);
-        for(c=head;c;c=c->next)
-            remove_window(c->win);
+    XQueryTree(dis, root, &root_return, &parent, &children, &nchildren);
+    for(i = 0; i < nchildren; i++) {
+        kill_client_now(children[i]);
     }
+    logger("\033[0;34mYou Quit : Thanks for using!");
+    XUngrabKey(dis, AnyKey, AnyModifier, root);
+    XDestroySubwindows(dis, root);
+    XSync(dis, False);
     bool_quit = 1;
+    logger(" \033[0;33mThanks for using!");
+    XCloseDisplay(dis);
+    exit (0);
 }
 
 unsigned long getcolor(const char* color) {
@@ -1026,6 +1037,7 @@ int main(int argc, char **argv) {
     start();
 
     // Close display
+    logger("\033[0;35m BYE");
     XCloseDisplay(dis);
 
     return 0;
