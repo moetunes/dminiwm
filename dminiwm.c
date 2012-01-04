@@ -605,7 +605,7 @@ void switch_mode(const Arg arg) {
     client *c;
 
     if(mode == arg.i) return;
-    if(mode == 1 && head->next != NULL) {
+    if(mode == 1 && current != NULL && head->next != NULL) {
         XUnmapWindow(dis, current->win);
         for(c=head;c;c=c->next)
             XMapWindow(dis, c->win);
@@ -613,7 +613,7 @@ void switch_mode(const Arg arg) {
 
     mode = arg.i;
     if(mode == 0 || mode == 3) master_size = sw * MASTER_SIZE;
-    if(mode == 1 && head->next != NULL)
+    if(mode == 1 && current != NULL && head->next != NULL)
         for(c=head;c;c=c->next)
             XUnmapWindow(dis, c->win);
 
@@ -843,6 +843,7 @@ void buttonpressed(XEvent *e) {
 }
 
 void kill_client() {
+    if(head == NULL) return;
     kill_client_now(current->win);
     remove_window(current->win);
 }
