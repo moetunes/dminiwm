@@ -1,5 +1,6 @@
 7/1/12
   Fix for window sizes after the window at the top of the stack has been resized
+  Added limits on the area of the master window 
 
 27/12/11
   A better send_kill_signal function so we can have a better quit function

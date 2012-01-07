@@ -73,32 +73,6 @@ typedef struct {
     int followwin;
 } Convenience;
 
-typedef enum {
-    ATOM_NET_WM_WINDOW_TYPE,
-    ATOM_NET_WM_WINDOW_TYPE_UTILITY,
-    ATOM_NET_WM_WINDOW_TYPE_DOCK,
-    ATOM_NET_WM_WINDOW_TYPE_SPLASH,
-    ATOM_NET_WM_WINDOW_TYPE_DIALOG,
-    ATOM_NET_WM_WINDOW_TYPE_NOTIFICATION,
-    ATOM_COUNT
-} AtomType;
-
-typedef struct {
-   Atom *atom;
-   const char *name;
-} AtomNode;
-
-Atom atoms[ATOM_COUNT];
-
-static const AtomNode atomList[] = {
-    { &atoms[ATOM_NET_WM_WINDOW_TYPE],              "_NET_WM_WINDOW_TYPE"             },
-    { &atoms[ATOM_NET_WM_WINDOW_TYPE_UTILITY],      "_NET_WM_WINDOW_TYPE_UTILITY"     },
-    { &atoms[ATOM_NET_WM_WINDOW_TYPE_DOCK],         "_NET_WM_WINDOW_TYPE_DOCK"        },
-    { &atoms[ATOM_NET_WM_WINDOW_TYPE_SPLASH],       "_NET_WM_WINDOW_TYPE_SPLASH"      },
-    { &atoms[ATOM_NET_WM_WINDOW_TYPE_DIALOG],       "_NET_WM_WINDOW_TYPE_DIALOG"      },
-    { &atoms[ATOM_NET_WM_WINDOW_TYPE_NOTIFICATION], "_NET_WM_WINDOW_TYPE_NOTIFICATION"},
-};
-
 // Functions
 static void add_window(Window w);
 static void buttonpressed(XEvent *e);
@@ -263,22 +237,6 @@ void remove_window(Window w) {
         }
     }
 }
-
-/* void kill_client() {
-    if(current != NULL) {
-        //send delete signal to window
-        XEvent ke;
-        ke.type = ClientMessage;
-        ke.xclient.window = current->win;
-        ke.xclient.message_type = XInternAtom(dis, "WM_PROTOCOLS", True);
-        ke.xclient.format = 32;
-        ke.xclient.data.l[0] = XInternAtom(dis, "WM_DELETE_WINDOW", True);
-        ke.xclient.data.l[1] = CurrentTime;
-        XSendEvent(dis, current->win, False, NoEventMask, &ke);
-        send_kill_signal(current->win);
-        remove_window(current->win);
-	}
-} */
 
 void next_win() {
     client *c;
@@ -625,8 +583,17 @@ void switch_mode(const Arg arg) {
 }
 
 void resize_master(const Arg arg) {
-        master_size += arg.i;
-        tile();
+    if(arg.i > 0) {
+        if((mode != 2 && sw-master_size > 70) || (mode == 2 && sh-master_size > 70)) {
+            master_size += arg.i;
+            tile();
+        }
+    } else {
+        if(master_size > 70) {
+            master_size += arg.i;
+            tile();
+        }
+    }
 }
 
 void resize_stack(const Arg arg) {
@@ -728,33 +695,6 @@ void maprequest(XEvent *e) {
         XSetInputFocus(dis,ev->window,RevertToParent,CurrentTime);
         XRaiseWindow(dis,ev->window);
         return;
-    }
-
-    unsigned long count, j, extra;
-    Atom realType;
-    int realFormat;
-    unsigned char *temp;
-    Atom *type;
-
-    if(XGetWindowProperty(dis, ev->window, atoms[ATOM_NET_WM_WINDOW_TYPE], 0, 32, False, XA_ATOM, &realType, &realFormat, &count, &extra, &temp) == Success) {
-        if(count > 0) {
-            type = (unsigned long*)temp;
-            for(j=0; j<count; j++) {
-                if((type[j] == atoms[ATOM_NET_WM_WINDOW_TYPE_UTILITY]) ||
-                  (type[j] == atoms[ATOM_NET_WM_WINDOW_TYPE_NOTIFICATION]) ||
-                  (type[j] == atoms[ATOM_NET_WM_WINDOW_TYPE_SPLASH]) ||
-                  (type[j] == atoms[ATOM_NET_WM_WINDOW_TYPE_DIALOG]) ||
-                  (type[j] == atoms[ATOM_NET_WM_WINDOW_TYPE_DOCK])) {
-                    add_window(ev->window);
-                    XMapWindow(dis, ev->window);
-                    XSetInputFocus(dis,ev->window,RevertToParent,CurrentTime);
-                    XRaiseWindow(dis,ev->window);
-                    if(temp)
-                        XFree(temp);
-                    return;
-                }
-            }
-        }
     }
 
     XClassHint ch = {0};
@@ -971,10 +911,6 @@ void setup() {
     const Arg arg = {.i = 0};
     current_desktop = arg.i;
     change_desktop(arg);
-    // Set up atoms for dialog/notification windows
-    int x;
-    for(x = 0; x < ATOM_COUNT; x++)
-        *atomList[x].atom = XInternAtom(dis, atomList[x].name, False);
     // To catch maprequest and destroynotify (if other wm running)
     XSelectInput(dis,root,SubstructureNotifyMask|SubstructureRedirectMask);
     XSetErrorHandler(xerror);
