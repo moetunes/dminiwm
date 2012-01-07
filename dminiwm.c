@@ -1,4 +1,4 @@
-/* dminiwm.c [ 0.2.8 ]
+/* dminiwm.c [ 0.2.9 ]
 *
 *  I started this from catwm 31/12/10
 *  Permission is hereby granted, free of charge, to any person obtaining a
@@ -62,8 +62,7 @@ struct client{
 typedef struct desktop desktop;
 struct desktop{
     int master_size;
-    int mode;
-    int growth;
+    int mode, growth, numwins;
     client *head;
     client *current;
 };
@@ -216,6 +215,7 @@ void add_window(Window w) {
     }
 
     current = c;
+    desktops[current_desktop].numwins += 1;
     save_desktop(current_desktop);
     // for folow mouse
     if(FOLLOW_MOUSE == 0) XSelectInput(dis, c->win, EnterWindowMask);
@@ -228,6 +228,8 @@ void remove_window(Window w) {
     for(c=head;c;c=c->next) {
 
         if(c->win == w) {
+            if(desktops[current_desktop].numwins < 4) growth = 0;
+            desktops[current_desktop].numwins -= 1;
             if(c->prev == NULL && c->next == NULL) {
                 free(head);
                 head = NULL;
@@ -628,8 +630,10 @@ void resize_master(const Arg arg) {
 }
 
 void resize_stack(const Arg arg) {
-    growth += arg.i;
-    tile();
+    if(desktops[current_desktop].numwins > 2) {
+        growth += arg.i;
+        tile();
+    }
 }
 
 void toggle_panel() {
@@ -941,7 +945,6 @@ void setup() {
 
     // Default stack
     mode = DEFAULT_MODE;
-    growth = 0;
 
     // List of client
     head = NULL;
@@ -958,7 +961,8 @@ void setup() {
     for(i=0;i<TABLENGTH(desktops);++i) {
         desktops[i].master_size = master_size;
         desktops[i].mode = mode;
-        desktops[i].growth = growth;
+        desktops[i].growth = 0;
+        desktops[i].numwins = 0;
         desktops[i].head = head;
         desktops[i].current = current;
     }
