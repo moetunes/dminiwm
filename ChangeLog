@@ -1,6 +1,10 @@
+9/1/12
+  Master area is reset if second last window is removed
+
 7/1/12
   Fix for window sizes after the window at the top of the stack has been resized
   Added limits on the area of the master window 
+  Fix for thunderbird write window( and others probably) just unmapping
 
 27/12/11
   A better send_kill_signal function so we can have a better quit function

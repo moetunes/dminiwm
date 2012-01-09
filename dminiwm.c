@@ -96,7 +96,7 @@ static void move_up();
 static void next_win();
 static void prev_win();
 static void quit();
-static void remove_window(Window w);
+static void remove_window(Window w, int dr);
 static void resize_master(const Arg arg);
 static void resize_stack(const Arg arg);
 static void rotate_desktop(const Arg arg);
@@ -110,6 +110,7 @@ static void swap_master();
 static void switch_mode(const Arg arg);
 static void tile();
 static void toggle_panel();
+static void unmapnotify(XEvent *e);    // Thunderbird's write window just unmaps...
 static void update_current();
 
 // Include configuration file (need struct key)
@@ -141,6 +142,7 @@ static void (*events[LASTEvent])(XEvent *e) = {
     [KeyPress] = keypress,
     [MapRequest] = maprequest,
     [EnterNotify] = enternotify,
+    [UnmapNotify] = unmapnotify,
     [ButtonPress] = buttonpressed,
     [DestroyNotify] = destroynotify,
     [ConfigureNotify] = configurenotify,
@@ -190,12 +192,14 @@ void add_window(Window w) {
 
     current = c;
     desktops[current_desktop].numwins += 1;
+    if(growth > 0) growth = growth*(desktops[current_desktop].numwins-1)/desktops[current_desktop].numwins;
+    else growth = 0;
     save_desktop(current_desktop);
     // for folow mouse
     if(FOLLOW_MOUSE == 0) XSelectInput(dis, c->win, EnterWindowMask);
 }
 
-void remove_window(Window w) {
+void remove_window(Window w, int dr) {
     client *c;
 
     // CHANGE THIS UGLY CODE
@@ -203,6 +207,7 @@ void remove_window(Window w) {
 
         if(c->win == w) {
             if(desktops[current_desktop].numwins < 4) growth = 0;
+            else growth = growth*(desktops[current_desktop].numwins-1)/desktops[current_desktop].numwins;
             desktops[current_desktop].numwins -= 1;
             if(c->prev == NULL && c->next == NULL) {
                 free(head);
@@ -228,9 +233,10 @@ void remove_window(Window w) {
                 current = c->prev;
             }
 
-            free(c);
+            if(dr == 0) free(c);
+            if(head->next == NULL && mode != 2) master_size = sw*MASTER_SIZE;
+            if(head->next == NULL && mode == 2) master_size = sh*MASTER_SIZE;
             save_desktop(current_desktop);
-            if(mode == 1) XMapWindow(dis, current->win);
             tile();
             update_current();
             return;
@@ -374,7 +380,7 @@ void follow_client_to_desktop(const Arg arg) {
     // Remove client from current desktop
     select_desktop(tmp2);
     XUnmapWindow(dis,tmp->win);
-    remove_window(tmp->win);
+    remove_window(tmp->win, 0);
     save_desktop(tmp2);
     tile();
     update_current();
@@ -396,7 +402,7 @@ void client_to_desktop(const Arg arg) {
     // Remove client from current desktop
     select_desktop(tmp2);
     XUnmapWindow(dis,tmp->win);
-    remove_window(tmp->win);
+    remove_window(tmp->win, 0);
     save_desktop(tmp2);
     tile();
     update_current();
@@ -598,7 +604,14 @@ void resize_master(const Arg arg) {
 
 void resize_stack(const Arg arg) {
     if(desktops[current_desktop].numwins > 2) {
-        growth += arg.i;
+        int n = desktops[current_desktop].numwins-1;
+        if(arg.i >0) {
+            if((mode != 2 && sh-(growth+sh/n) > (n-1)*70) || (mode == 2 && sw-(growth+sw/n) > (n-1)*70))
+                growth += arg.i;
+        } else {
+            if((mode != 2 && (sh/n+growth) > 70) || (mode == 2 && (sw/n+growth) > 70))
+                growth += arg.i;
+        }
         tile();
     }
 }
@@ -733,25 +746,19 @@ void maprequest(XEvent *e) {
 
 void destroynotify(XEvent *e) {
     int i = 0;
-    int j = 0;
     int tmp = current_desktop;
     client *c;
     XDestroyWindowEvent *ev = &e->xdestroywindow;
 
     save_desktop(tmp);
-    for(j=0;j<TABLENGTH(desktops);++j) {
-        select_desktop(j);
+    for(i=0;i<TABLENGTH(desktops);++i) {
+        select_desktop(i);
         for(c=head;c;c=c->next)
-            if(ev->window == c->win)
-                i++;
-
-        if(i != 0) {
-            remove_window(ev->window);
-            select_desktop(tmp);
-            return;
-        }
-
-        i = 0;
+            if(ev->window == c->win) {
+                remove_window(ev->window, 0);
+                select_desktop(tmp);
+                return;
+            }
     }
     select_desktop(tmp);
 }
@@ -786,10 +793,31 @@ void buttonpressed(XEvent *e) {
             }
 }
 
+void unmapnotify(XEvent *e) { // for thunderbird's write window and maybe others
+    XUnmapEvent *ev = &e->xunmap;
+    int i = 0;
+    int tmp = current_desktop;
+    client *c;
+
+    if(ev->send_event == 1) {
+        save_desktop(tmp);
+        for(i=0;i<TABLENGTH(desktops);++i) {
+            select_desktop(i);
+            for(c=head;c;c=c->next)
+                if(ev->window == c->win) {
+                    remove_window(ev->window, 1);
+                    select_desktop(tmp);
+                    return;
+                }
+        }
+        select_desktop(tmp);
+    }
+}
+
 void kill_client() {
     if(head == NULL) return;
     kill_client_now(current->win);
-    remove_window(current->win);
+    remove_window(current->win, 0);
 }
 
 void kill_client_now(Window w) {
