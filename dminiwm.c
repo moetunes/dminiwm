@@ -1,4 +1,4 @@
-/* dminiwm.c [ 0.2.9 ]
+/* dminiwm.c [ 0.3.0 ]
 *
 *  I started this from catwm 31/12/10
 *  Permission is hereby granted, free of charge, to any person obtaining a
@@ -571,6 +571,7 @@ void switch_mode(const Arg arg) {
     client *c;
 
     if(mode == arg.i) return;
+    growth = 0;
     if(mode == 1 && current != NULL && head->next != NULL) {
         XUnmapWindow(dis, current->win);
         for(c=head;c;c=c->next)
@@ -848,23 +849,11 @@ void kill_client_now(Window w) {
 }
 
 void quit() {
-    Window root_return, parent;
-    Window *children;
-    int i;
-    unsigned int nchildren;
-
-    XQueryTree(dis, root, &root_return, &parent, &children, &nchildren);
-    for(i = 0; i < nchildren; i++) {
-        kill_client_now(children[i]);
-    }
     logger("\033[0;34mYou Quit : Thanks for using!");
     XUngrabKey(dis, AnyKey, AnyModifier, root);
     XDestroySubwindows(dis, root);
     XSync(dis, False);
     bool_quit = 1;
-    logger(" \033[0;33mThanks for using!");
-    XCloseDisplay(dis);
-    exit (0);
 }
 
 unsigned long getcolor(const char* color) {
