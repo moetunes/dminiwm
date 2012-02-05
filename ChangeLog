@@ -1,3 +1,8 @@
+6/2/12
+  Bugfixes. Fullscreen mode last window always mapped now.
+  			tabbed firefox doesn't open empty windows on unfocused desktops
+  			transient windows are always floating
+
 9/1/12
   Master area is reset if second last window is removed
 
