@@ -707,9 +707,11 @@ void maprequest(XEvent *e) {
         }
 
    	Window trans = None;
-   	if (XGetTransientForHint(dis, ev->window, &trans) && trans != None) {
-   	    add_window(ev->window);
+    if (XGetTransientForHint(dis, ev->window, &trans) && trans != None) {
+        add_window(ev->window);
         XMapWindow(dis, ev->window);
+        XSetWindowBorderWidth(dis,ev->window,BORDER_WIDTH);
+        XSetWindowBorder(dis,ev->window,win_focus);
         XSetInputFocus(dis,ev->window,RevertToParent,CurrentTime);
         XRaiseWindow(dis,ev->window);
         return;
