@@ -11,6 +11,7 @@ Screenshots and ramblings/updates at https://bbs.archlinux.org/viewtopic.php?id=
 
 
 **dminiwm** is a very minimal and lightweight dynamic tiling window manager.
+
     I will try to stay under 1000 SLOC.
 
     Currently under 950 lines with the config file included.
