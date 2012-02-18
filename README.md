@@ -12,6 +12,7 @@ Screenshots and ramblings/updates at https://bbs.archlinux.org/viewtopic.php?id=
 
 **dminiwm** is a very minimal and lightweight dynamic tiling window manager.
     I will try to stay under 1000 SLOC.
+
     Currently under 950 lines with the config file included.
 
 
@@ -53,15 +54,16 @@ It allows the "normal" method of tiling window managers(with the new window as t
 
  All accessible with keyboard shortcuts defined in the config.h file.
  
- * The window W at the top of the stack can be resized on a per desktop basis.
+ * The window *W* at the top of the stack can be resized on a per desktop basis.
  * Changing a tiling mode or window size on one desktop doesn't affect the other desktops.
 
 
 ###Recent Changes
 --------------
 
-26/11/11
-	Added ability to change back to last opened desktop.
+6/2/12
+
+>	Transient windows are now always floating and always on top
 
 ###Status
 ------
@@ -101,5 +103,5 @@ Need Xlib, then:
 ###Todo
 ----
 
-  * when swithching desktops stop the mouse being in an unfocused window changing focus.
+  * 
 
