@@ -54,7 +54,7 @@ struct client{
     // Prev and next client
     client *next;
     client *prev;
-
+    client *prev_current;
     // The window
     Window win;
 };
@@ -113,6 +113,7 @@ static void tile();
 static void toggle_panel();
 static void unmapnotify(XEvent *e);    // Thunderbird's write window just unmaps...
 static void update_current();
+static void warp_pointer();
 
 // Include configuration file (need struct key)
 #include "config.h"
@@ -138,6 +139,7 @@ static Window root;
 static client *head;
 static client *current;
 static client *transient;
+static XWindowAttributes attr;
 
 // Events array
 static void (*events[LASTEvent])(XEvent *e) = {
@@ -178,9 +180,10 @@ void add_window(Window w, int tw) {
     }
     else {
         if(ATTACH_ASIDE == 0) {
-            for(t=head;t->next;t=t->next);
+            for(t=head;t->next;t=t->next); // Start at the last in the stack
             c->next = NULL;
             c->prev = t;
+            c->prev_current = current;
             c->win = w;
             t->next = c;
         }
@@ -188,6 +191,7 @@ void add_window(Window w, int tw) {
             t=head;
             c->prev = NULL;
             c->next = t;
+            c->prev_current = current;
             c->win = w;
             t->prev = c;
             head = c;
@@ -230,19 +234,24 @@ void remove_window(Window w, int dr) {
                 return;
             }
 
+            if(desktops[current_desktop].numwins < 3)
+                c->prev_current = NULL;
             if(c->prev == NULL) {
                 head = c->next;
                 c->next->prev = NULL;
-                current = c->next;
+                if(c->prev_current == NULL) current = c->next;
+                else current = c->prev_current;
             }
             else if(c->next == NULL) {
                 c->prev->next = NULL;
-                current = c->prev;
+                if(c->prev_current == NULL) current = c->prev;
+                else current = c->prev_current;
             }
             else {
                 c->prev->next = c->next;
                 c->next->prev = c->prev;
-                current = c->prev;
+                current = c->prev_current;
+                //current = c->prev;
             }
 
             if(dr == 0) free(c);
@@ -251,6 +260,7 @@ void remove_window(Window w, int dr) {
             save_desktop(current_desktop);
             tile();
             update_current();
+            if(desktops[current_desktop].numwins > 1) warp_pointer();
             return;
         }
     }
@@ -265,10 +275,12 @@ void next_win() {
         else
             c = current->next;
 
+        c->prev_current = current;
         current = c;
         if(mode == 1)
             tile();
         update_current();
+        warp_pointer();
     }
 }
 
@@ -281,10 +293,12 @@ void prev_win() {
         else
             c = current->prev;
 
+        c->prev_current = current;
         current = c;
         if(mode == 1)
             tile();
         update_current();
+        warp_pointer();
     }
 }
 
@@ -367,6 +381,7 @@ void change_desktop(const Arg arg) {
 
     tile();
     update_current();
+    warp_pointer();
 }
 
 void last_desktop() {
@@ -683,6 +698,14 @@ void keypress(XEvent *e) {
     }
 }
 
+void warp_pointer() {
+    // Move cursor to the center of the current window
+    if(FOLLOW_MOUSE == 0 && head != NULL) {
+        XGetWindowAttributes(dis, current->win, &attr);
+        XWarpPointer(dis, None, current->win, 0, 0, 0, 0, attr.width/2, attr.height/2);
+    }
+}
+
 void configurenotify(XEvent *e) {
     // Do nothing for the moment
 }
@@ -773,6 +796,7 @@ void maprequest(XEvent *e) {
     XMapWindow(dis,ev->window);
     tile();
     update_current();
+    warp_pointer();
 }
 
 void destroynotify(XEvent *e) {
@@ -808,6 +832,7 @@ void enternotify(XEvent *e) {
         if(transient != NULL) return;
         for(c=head;c;c=c->next)
            if(ev->window == c->win) {
+                c->prev_current = current;
                 current = c;
                 update_current();
                 return;

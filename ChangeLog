@@ -1,3 +1,7 @@
+27/2/12
+  If FOLLOW_MOUSE = 0 the cursor will be moved to the last focused window 
+    when a window is removed or the desktop changed
+
 26/2/12
   Added option to config to not have the panel shown if there's a window open
 

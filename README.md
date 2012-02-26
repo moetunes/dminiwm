@@ -62,9 +62,10 @@ It allows the "normal" method of tiling window managers(with the new window as t
 ###Recent Changes
 --------------
 
-6/2/12
+27/2/12
 
->	Transient windows are now always floating and always on top
+>	Option in the config file to not show a panel when a window is open.
+    Last focused window is refocused and the mouse moved to it on window removal or desktop change
 
 ###Status
 ------
@@ -80,6 +81,7 @@ There are more options in the config file than the original catwm.
   * Added having applications open on specified desktop
   * Added a click to focus option
   * Added ability to change back to last opened desktop.
+  * Transient windows are now always floating and always on top
 
 
 ###Installation
