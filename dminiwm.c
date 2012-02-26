@@ -1,4 +1,4 @@
-/* dminiwm.c [ 0.3.2 ]
+/* dminiwm.c [ 0.3.3 ]
 *
 *  I started this from catwm 31/12/10
 *  Permission is hereby granted, free of charge, to any person obtaining a
@@ -159,7 +159,7 @@ void add_window(Window w, int tw) {
     client *c,*t;
 
     if(!(c = (client *)calloc(1,sizeof(client)))) {
-        logger("\0.3.2;31mError calloc!");
+        logger("\0.3.3;31mError calloc!");
         exit(1);
     }
 
@@ -880,7 +880,7 @@ void kill_client_now(Window w) {
 }
 
 void quit() {
-    logger("\0.3.2;34mYou Quit : Thanks for using!");
+    logger("\0.3.3;34mYou Quit : Thanks for using!");
     XUngrabKey(dis, AnyKey, AnyModifier, root);
     XDestroySubwindows(dis, root);
     XSync(dis, False);
@@ -892,7 +892,7 @@ unsigned long getcolor(const char* color) {
     Colormap map = DefaultColormap(dis,screen);
 
     if(!XAllocNamedColor(dis,map,color,&c,&c)) {
-        logger("\0.3.2;31mError parsing color!");
+        logger("\0.3.3;31mError parsing color!");
         exit(1);
     }
     return c.pixel;
@@ -915,6 +915,8 @@ void setup() {
     sw = XDisplayWidth(dis,screen) - BORDER_WIDTH;
     sh = (XDisplayHeight(dis,screen) - panel_size) - BORDER_WIDTH;
 
+    // For having the panel shown at startup or not
+    if(SHOW_BAR > 0) toggle_panel();
     // Colors
     win_focus = getcolor(FOCUS);
     win_unfocus = getcolor(UNFOCUS);
@@ -968,12 +970,12 @@ void setup() {
     XSetErrorHandler(xerror);
     // For exiting
     bool_quit = 0;
-    logger("\0.3.2;32mWe're up and running!");
+    logger("\0.3.3;32mWe're up and running!");
 }
 
 void sigchld(int unused) {
 	if(signal(SIGCHLD, sigchld) == SIG_ERR) {
-		logger("\0.3.2;31mCan't install SIGCHLD handler");
+		logger("\0.3.3;31mCan't install SIGCHLD handler");
 		exit(1);
         }
 	while(0 < waitpid(-1, NULL, WNOHANG));
@@ -1003,7 +1005,7 @@ int xerror(Display *dis, XErrorEvent *ee) {
 	|| (ee->request_code == X_GrabKey && ee->error_code == BadAccess)
 	|| (ee->request_code == X_CopyArea && ee->error_code == BadDrawable))
         return 0;
-    logger("\0.3.2;31mBad Window Error!");
+    logger("\0.3.3;31mBad Window Error!");
     return xerrorxlib(dis, ee); /* may call exit */
 }
 
@@ -1020,7 +1022,7 @@ void start() {
 int main(int argc, char **argv) {
     // Open display
     if(!(dis = XOpenDisplay(NULL))) {
-        logger("\0.3.2;31mCannot open display!");
+        logger("\0.3.3;31mCannot open display!");
         exit(1);
     }
 
@@ -1031,7 +1033,7 @@ int main(int argc, char **argv) {
     start();
 
     // Close display
-    logger("\0.3.2;35m BYE");
+    logger("\0.3.3;35m BYE");
     XCloseDisplay(dis);
 
     return 0;

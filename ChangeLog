@@ -1,3 +1,6 @@
+26/2/12
+  Added option to config to not have the panel shown if there's an open window
+
 6/2/12
   Bugfixes. Fullscreen mode last window always mapped now.
   			tabbed firefox doesn't open empty windows on unfocused desktops
