@@ -1,5 +1,5 @@
 26/2/12
-  Added option to config to not have the panel shown if there's an open window
+  Added option to config to not have the panel shown if there's a window open
 
 6/2/12
   Bugfixes. Fullscreen mode last window always mapped now.
