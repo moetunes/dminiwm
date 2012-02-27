@@ -54,7 +54,6 @@ struct client{
     // Prev and next client
     client *next;
     client *prev;
-    client *prev_current;
     // The window
     Window win;
 };
@@ -183,7 +182,6 @@ void add_window(Window w, int tw) {
             for(t=head;t->next;t=t->next); // Start at the last in the stack
             c->next = NULL;
             c->prev = t;
-            c->prev_current = current;
             c->win = w;
             t->next = c;
         }
@@ -191,7 +189,6 @@ void add_window(Window w, int tw) {
             t=head;
             c->prev = NULL;
             c->next = t;
-            c->prev_current = current;
             c->win = w;
             t->prev = c;
             head = c;
@@ -234,24 +231,19 @@ void remove_window(Window w, int dr) {
                 return;
             }
 
-            if(desktops[current_desktop].numwins < 3)
-                c->prev_current = NULL;
             if(c->prev == NULL) {
                 head = c->next;
                 c->next->prev = NULL;
-                if(c->prev_current == NULL) current = c->next;
-                else current = c->prev_current;
+                current = c->next;
             }
             else if(c->next == NULL) {
                 c->prev->next = NULL;
-                if(c->prev_current == NULL) current = c->prev;
-                else current = c->prev_current;
+                current = c->prev;
             }
             else {
                 c->prev->next = c->next;
                 c->next->prev = c->prev;
-                current = c->prev_current;
-                //current = c->prev;
+                current = c->prev;
             }
 
             if(dr == 0) free(c);
@@ -275,7 +267,6 @@ void next_win() {
         else
             c = current->next;
 
-        c->prev_current = current;
         current = c;
         if(mode == 1)
             tile();
@@ -293,7 +284,6 @@ void prev_win() {
         else
             c = current->prev;
 
-        c->prev_current = current;
         current = c;
         if(mode == 1)
             tile();
@@ -736,7 +726,6 @@ void configurerequest(XEvent *e) {
 
 void maprequest(XEvent *e) {
     XMapRequestEvent *ev = &e->xmaprequest;
-    XWindowAttributes attr;
 
     XGetWindowAttributes(dis, ev->window, &attr);
     if(attr.override_redirect) return;
@@ -832,7 +821,6 @@ void enternotify(XEvent *e) {
         if(transient != NULL) return;
         for(c=head;c;c=c->next)
            if(ev->window == c->win) {
-                c->prev_current = current;
                 current = c;
                 update_current();
                 return;

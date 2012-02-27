@@ -1,3 +1,6 @@
+28/2/12
+  Removed remembering the last focused window
+
 27/2/12
   If FOLLOW_MOUSE = 0 the cursor will be moved to the last focused window 
     when a window is removed or the desktop changed
