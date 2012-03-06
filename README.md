@@ -14,14 +14,14 @@ Screenshots and ramblings/updates at https://bbs.archlinux.org/viewtopic.php?id=
 
 >    I will try to stay under 1000 SLOC.
 
->    Currently under 950 lines with the config file included.
+>    Currently under 970 lines with the config file included.
 
 
 ###Modes
 -----
 
 It allows the "normal" method of tiling window managers(with the new window as the master)
-    and with the new window opened at the bottom of the stack(like dwm's attach_aside)
+    or with the new window opened at the bottom or the top of the stack.
 
  *There's vertical tiling mode:*
 
@@ -62,10 +62,9 @@ It allows the "normal" method of tiling window managers(with the new window as t
 ###Recent Changes
 --------------
 
-27/2/12
+6/3/12
 
->	Option in the config file to not show a panel when a window is open.
-    Last focused window is refocused and the mouse moved to it on desktop change
+>	Added option in the config to have new window opened top or bottom of the stack when using atach aside
 
 ###Status
 ------
@@ -82,6 +81,8 @@ There are more options in the config file than the original catwm.
   * Added a click to focus option
   * Added ability to change back to last opened desktop.
   * Transient windows are now always floating and always on top
+  * Option in the config file to not show a panel when a window is open.
+  * Last focused window is refocused and the mouse moved to it on desktop change
 
 
 ###Installation
