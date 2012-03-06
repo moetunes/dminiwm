@@ -65,7 +65,7 @@ It allows the "normal" method of tiling window managers(with the new window as t
 27/2/12
 
 >	Option in the config file to not show a panel when a window is open.
-    Last focused window is refocused and the mouse moved to it on window removal or desktop change
+    Last focused window is refocused and the mouse moved to it on desktop change
 
 ###Status
 ------

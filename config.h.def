@@ -1,4 +1,4 @@
- /* config.h for dminiwm.c [ 0.3.3 ]
+ /* config.h for dminiwm.c [ 0.3.4 ]
  *
  *  Started from catwm 31/12/10
  *
@@ -32,8 +32,10 @@
 #define MASTER_SIZE     0.52
 #define TOP_PANEL       0  /* 1=Don't 0=Have the panel at the top instead of the bottom */
 #define PANEL_HEIGHT	18 /* 0 for no space for a panel */
+#define SHOW_BAR        1  /* 1=Don't 0=Have the bar shown with a window open */
 #define BORDER_WIDTH    2
-#define ATTACH_ASIDE    1  /* 0=TRUE, 1=New window is master */
+#define ATTACH_ASIDE    0  /* 0=TRUE, 1=New window is master */
+#define TOP_STACK       0  /* 0=TRUE, 1=New window added to bottom of stack */
 #define DEFAULT_MODE    0  /* 0=Vertical, 1=Fullscreen 2=Horizontal 3=grid*/
 #define FOLLOW_MOUSE    0  /* 1=Don't 0=Focus the window the mouse just entered */
 #define CLICK_TO_FOCUS  1  /* 1=Don't 0=Focus an unfocused window when clicked */
@@ -100,7 +102,7 @@ static key keys[] = {
     {  MOD1|ShiftMask,   XK_Return,     swap_master,       {NULL}},
     {  MOD1|ShiftMask,   XK_g,          switch_mode,       {.i = 3}}, // grid
     {  MOD1|ShiftMask,   XK_h,          switch_mode,       {.i = 2}}, // horizontal
-    {  MOD1|ShiftMask,   XK_m,          switch_mode,       {.i = 1}}, // fullscreen
+    {  MOD1|ShiftMask,   XK_f,          switch_mode,       {.i = 1}}, // fullscreen
     {  MOD1|ShiftMask,   XK_v,          switch_mode,       {.i = 0}}, // vertical
 // Control + alt + shortcut
     {  MOD1|ControlMask, XK_q,          quit,              {NULL}},

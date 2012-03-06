@@ -1,4 +1,4 @@
-/* dminiwm.c [ 0.3.3 ]
+/* dminiwm.c [ 0.3.4 ]
 *
 *  I started this from catwm 31/12/10
 *  Permission is hereby granted, free of charge, to any person obtaining a
@@ -160,7 +160,7 @@ void add_window(Window w, int tw) {
     client *c,*t;
 
     if(!(c = (client *)calloc(1,sizeof(client)))) {
-        logger("\0.3.3;31mError calloc!");
+        logger("\033[0;31mError calloc!");
         exit(1);
     }
 
@@ -179,23 +179,38 @@ void add_window(Window w, int tw) {
     }
     else {
         if(ATTACH_ASIDE == 0) {
-            for(t=head;t->next;t=t->next); // Start at the last in the stack
-            c->next = NULL;
-            c->prev = t;
-            c->win = w;
-            t->next = c;
-        }
-        else {
+            if(TOP_STACK == 0) {
+                if(head->next == NULL) {
+                    c->prev = head;
+                    c->next = NULL;
+                } else {
+                    t = head->next;
+                    c->prev = t->prev;
+                    c->next = t;
+                    t->prev = c;
+                }
+                c->win = w;
+                head->next = c;
+            } else {
+                for(t=head;t->next;t=t->next); // Start at the last in the stack
+                c->next = NULL;
+                c->prev = t;
+                c->win = w;
+                t->next = c;
+            }
+        } else {
             t=head;
             c->prev = NULL;
             c->next = t;
             c->win = w;
             t->prev = c;
             head = c;
+            current = head;
+            warp_pointer();
         }
     }
 
-    current = c;
+    current = head;
     desktops[current_desktop].numwins += 1;
     if(growth > 0) growth = growth*(desktops[current_desktop].numwins-1)/desktops[current_desktop].numwins;
     else growth = 0;
@@ -614,6 +629,7 @@ void switch_mode(const Arg arg) {
     if(mode == 2) master_size = sh * MASTER_SIZE;
     tile();
     update_current();
+    warp_pointer();
 }
 
 void resize_master(const Arg arg) {
@@ -782,10 +798,9 @@ void maprequest(XEvent *e) {
             }
 
     add_window(ev->window, 0);
-    XMapWindow(dis,ev->window);
     tile();
+    XMapWindow(dis,ev->window);
     update_current();
-    warp_pointer();
 }
 
 void destroynotify(XEvent *e) {
@@ -875,7 +890,7 @@ void kill_client_now(Window w) {
     int can_delete = 0;
     XEvent ke;
     Atom wm_delete_window;
-    wm_delete_window = XInternAtom(dis, "WM_DELETE_WINDOW", False); 
+    wm_delete_window = XInternAtom(dis, "WM_DELETE_WINDOW", True); 
 
     if (XGetWMProtocols(dis, w, &protocols, &n) != 0)
         for (i=0;i<n;i++)
@@ -886,17 +901,26 @@ void kill_client_now(Window w) {
         ke.xclient.window = w;
         ke.xclient.message_type = XInternAtom(dis, "WM_PROTOCOLS", True);
         ke.xclient.format = 32;
-        ke.xclient.data.l[0] = XInternAtom(dis, "WM_DELETE_WINDOW", True);
+        ke.xclient.data.l[0] = wm_delete_window;
         ke.xclient.data.l[1] = CurrentTime;
         XSendEvent(dis, w, False, NoEventMask, &ke);
     } else XKillClient(dis, w);
 }
 
 void quit() {
-    logger("\0.3.3;34mYou Quit : Thanks for using!");
+    Window root_return, parent;
+    Window *children;
+    int i;
+    unsigned int nchildren; 
+
+    logger("\033[0;34mYou Quit : Thanks for using!");
     XUngrabKey(dis, AnyKey, AnyModifier, root);
+    XQueryTree(dis, root, &root_return, &parent, &children, &nchildren);
+    for(i = 0; i < nchildren; i++)
+        kill_client_now(children[i]);
+
     XDestroySubwindows(dis, root);
-    XSync(dis, False);
+    sleep(1);
     bool_quit = 1;
 }
 
@@ -905,7 +929,7 @@ unsigned long getcolor(const char* color) {
     Colormap map = DefaultColormap(dis,screen);
 
     if(!XAllocNamedColor(dis,map,color,&c,&c)) {
-        logger("\0.3.3;31mError parsing color!");
+        logger("\033[0;31mError parsing color!");
         exit(1);
     }
     return c.pixel;
@@ -983,12 +1007,12 @@ void setup() {
     XSetErrorHandler(xerror);
     // For exiting
     bool_quit = 0;
-    logger("\0.3.3;32mWe're up and running!");
+    logger("\033[0;32mWe're up and running!");
 }
 
 void sigchld(int unused) {
 	if(signal(SIGCHLD, sigchld) == SIG_ERR) {
-		logger("\0.3.3;31mCan't install SIGCHLD handler");
+		logger("\033[0;31mCan't install SIGCHLD handler");
 		exit(1);
         }
 	while(0 < waitpid(-1, NULL, WNOHANG));
@@ -1018,7 +1042,7 @@ int xerror(Display *dis, XErrorEvent *ee) {
 	|| (ee->request_code == X_GrabKey && ee->error_code == BadAccess)
 	|| (ee->request_code == X_CopyArea && ee->error_code == BadDrawable))
         return 0;
-    logger("\0.3.3;31mBad Window Error!");
+    logger("\033[0;31mBad Window Error!");
     return xerrorxlib(dis, ee); /* may call exit */
 }
 
@@ -1035,7 +1059,7 @@ void start() {
 int main(int argc, char **argv) {
     // Open display
     if(!(dis = XOpenDisplay(NULL))) {
-        logger("\0.3.3;31mCannot open display!");
+        logger("\033[0;31mCannot open display!");
         exit(1);
     }
 
@@ -1046,8 +1070,8 @@ int main(int argc, char **argv) {
     start();
 
     // Close display
-    logger("\0.3.3;35m BYE");
+    logger("\033[0;35m BYE");
     XCloseDisplay(dis);
 
-    return 0;
+    exit(0);
 }
