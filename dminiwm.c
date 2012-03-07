@@ -663,7 +663,7 @@ void keypress(XEvent *e) {
 
 void warp_pointer() {
     // Move cursor to the center of the current window
-    if(FOLLOW_MOUSE == 0 && head->next != NULL) {
+    if(FOLLOW_MOUSE == 0 && head != NULL) {
         XGetWindowAttributes(dis, current->win, &attr);
         XWarpPointer(dis, None, current->win, 0, 0, 0, 0, attr.width/2, attr.height/2);
     }
@@ -927,6 +927,7 @@ void setup() {
     // List of client
     head = NULL;
     current = NULL;
+    transient = NULL;
 
     // Master size
     if(mode == 2) master_size = sh*MASTER_SIZE;
@@ -940,6 +941,7 @@ void setup() {
         desktops[i].numwins = 0;
         desktops[i].head = head;
         desktops[i].current = current;
+        desktops[i].transient = transient;
     }
 
     // Select first dekstop by default
