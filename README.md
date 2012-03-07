@@ -14,7 +14,7 @@ Screenshots and ramblings/updates at https://bbs.archlinux.org/viewtopic.php?id=
 
 >    I will try to stay under 1000 SLOC.
 
->    Currently under 970 lines with the config file included.
+>    Currently under 930 lines with the config file included.
 
 
 ###Modes
@@ -46,7 +46,7 @@ It allows the "normal" method of tiling window managers(with the new window as t
 
     -------------
     |      | W  |
-    |      |    |
+    |Master|    |
     |------|----|
     |      |    |
     -------------
