@@ -477,8 +477,8 @@ void tile() {
                 }
                 break;
             case 1: /* Fullscreen */
-                XMapWindow(dis, current->win);
                 XMoveResizeWindow(dis,current->win,0,y,sw+2*BORDER_WIDTH,sh+2*BORDER_WIDTH);
+                XMapWindow(dis, current->win);
                 break;
             case 2: /* Horizontal */
             	// Master window
@@ -746,7 +746,7 @@ void maprequest(XEvent *e) {
 
     add_window(ev->window, 0);
     tile();
-    XMapWindow(dis,ev->window);
+    if(mode != 1) XMapWindow(dis,ev->window);
     update_current();
 }
 
