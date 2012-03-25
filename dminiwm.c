@@ -1,4 +1,4 @@
-/* dminiwm.c [ 0.3.4 ]
+/* dminiwm.c [ 0.3.5 ]
 *
 *  I started this from catwm 31/12/10
 *  Permission is hereby granted, free of charge, to any person obtaining a
@@ -22,7 +22,8 @@
 */
 
 #include <X11/Xlib.h>
-#include <X11/keysym.h>
+#include <X11/XKBlib.h>
+//#include <X11/keysym.h>
 //#include <X11/XF86keysym.h>
 #include <X11/Xproto.h>
 #include <X11/Xutil.h>
@@ -233,7 +234,6 @@ void remove_window(Window w, int dr) {
                 }
                 free(c);
                 save_desktop(current_desktop);
-                update_current();
                 return;
             }
         }
@@ -387,24 +387,7 @@ void rotate_desktop(const Arg arg) {
 }
 
 void follow_client_to_desktop(const Arg arg) {
-    client *tmp = current;
-    int tmp2 = current_desktop;
-
-    if(arg.i == current_desktop || current == NULL)
-        return;
-
-    // Add client to desktop
-    select_desktop(arg.i);
-    add_window(tmp->win, 0);
-    save_desktop(arg.i);
-
-    // Remove client from current desktop
-    select_desktop(tmp2);
-    XUnmapWindow(dis,tmp->win);
-    remove_window(tmp->win, 0);
-    save_desktop(tmp2);
-    tile();
-    update_current();
+    client_to_desktop(arg);
     change_desktop(arg);
 }
 
@@ -424,9 +407,6 @@ void client_to_desktop(const Arg arg) {
     select_desktop(tmp2);
     XUnmapWindow(dis,tmp->win);
     remove_window(tmp->win, 0);
-    save_desktop(tmp2);
-    tile();
-    update_current();
 }
 
 void save_desktop(int i) {
@@ -652,7 +632,7 @@ void keypress(XEvent *e) {
     KeySym keysym;
     XKeyEvent *ev = &e->xkey;
 
-    keysym = XKeycodeToKeysym(dis, (KeyCode)ev->keycode, 0);
+    keysym = XkbKeycodeToKeysym(dis, (KeyCode)ev->keycode, 0, 0);
     for(i = 0; i < len; i++) {
         if(keysym == keys[i].keysym && CLEANMASK(keys[i].mod) == CLEANMASK(ev->state)) {
             if(keys[i].function)
@@ -866,7 +846,6 @@ void quit() {
         kill_client_now(children[i]);
 
     XDestroySubwindows(dis, root);
-    sleep(1);
     bool_quit = 1;
 }
 
