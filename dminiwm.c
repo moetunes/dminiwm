@@ -1,4 +1,4 @@
-/* dminiwm.c [ 0.3.5 ]
+/* dminiwm.c [ 0.3.7 ]
 *
 *  I started this from catwm 31/12/10
 *  Permission is hereby granted, free of charge, to any person obtaining a
@@ -664,7 +664,7 @@ void configurerequest(XEvent *e) {
     wc.y = ev->y + y;
     if(ev->width < sw-BORDER_WIDTH) wc.width = ev->width;
     else wc.width = sw+BORDER_WIDTH;
-    if(ev->height < sh-BORDER_WIDTH) wc.height = ev->height;
+    if(ev->height < sh-BORDER_WIDTH-y) wc.height = ev->height;
     else wc.height = sh+BORDER_WIDTH;
     wc.border_width = ev->border_width;
     wc.sibling = ev->above;
@@ -679,19 +679,23 @@ void maprequest(XEvent *e) {
     XGetWindowAttributes(dis, ev->window, &attr);
     if(attr.override_redirect) return;
 
+    int y=0;
+    if(TOP_PANEL == 0) y = panel_size;
     // For fullscreen mplayer (and maybe some other program)
     client *c;
 
     for(c=head;c;c=c->next)
         if(ev->window == c->win) {
             XMapWindow(dis,ev->window);
-            XMoveResizeWindow(dis,c->win,0,0,sw,sh);
+            XMoveResizeWindow(dis,c->win,0,y,sw,sh-y);
             return;
         }
 
    	Window trans = None;
     if (XGetTransientForHint(dis, ev->window, &trans) && trans != None) {
         add_window(ev->window, 1); XMapWindow(dis, ev->window);
+        if((attr.y + attr.height) > sh)
+            XMoveResizeWindow(dis,ev->window,attr.x,y,attr.width,attr.height-10);
         XSetWindowBorderWidth(dis,ev->window,BORDER_WIDTH);
         XSetWindowBorder(dis,ev->window,win_focus);
         update_current();
