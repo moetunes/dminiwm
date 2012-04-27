@@ -2,7 +2,7 @@
 ### it's minimal and dynamic
 
 I started this from catwm 31/12/10 ( https://bbs.archlinux.org/viewtopic.php?id=100215&p=1 )
-    See dminiwm.c or config.h for thanks and licensing.
+    See dminiwm.c for thanks and licensing.
 Screenshots and ramblings/updates at https://bbs.archlinux.org/viewtopic.php?id=126463
 
 
@@ -14,7 +14,7 @@ Screenshots and ramblings/updates at https://bbs.archlinux.org/viewtopic.php?id=
 
 >    I will try to stay under 1000 SLOC.
 
->    Currently under 930 lines with the config file included.
+>    Currently under 960 lines with the config file included.
 
 
 ###Modes
@@ -51,6 +51,16 @@ It allows the "normal" method of tiling window managers(with the new window as t
     |      |    |
     -------------
 
+ *Stacking mode:*
+
+    -------------
+    |   _______  |
+    |  |  ___  | |
+    |  | |___| | |
+    |  |_______| |
+    -------------
+
+
  *Fullscreen mode*(which you'll know when you see it)
 
  All accessible with keyboard shortcuts defined in the config.h file.
@@ -62,9 +72,9 @@ It allows the "normal" method of tiling window managers(with the new window as t
 ###Recent Changes
 --------------
 
-6/3/12
+27/4/12
 
->	Added option in the config to have new window opened top or bottom of the stack when using atach aside
+>	Added stacking mode
 
 ###Status
 ------
@@ -83,6 +93,7 @@ There are more options in the config file than the original catwm.
   * Transient windows are now always floating and always on top
   * Option in the config file to not show a panel when a window is open.
   * Last focused window is refocused and the mouse moved to it on desktop change
+  * Added option in the config to have new window opened top or bottom of the stack when using atach aside
 
 
 ###Installation

@@ -1,4 +1,4 @@
-/* dminiwm.c [ 0.3.7 ]
+/* dminiwm.c [ 0.3.8 ]
 *
 *  I started this from catwm 31/12/10
 *  Permission is hereby granted, free of charge, to any person obtaining a
@@ -23,7 +23,6 @@
 
 #include <X11/Xlib.h>
 #include <X11/XKBlib.h>
-//#include <X11/keysym.h>
 //#include <X11/XF86keysym.h>
 #include <X11/Xproto.h>
 #include <X11/Xutil.h>
@@ -35,6 +34,8 @@
 #include <sys/wait.h>
 #include <string.h>
 
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define CLEANMASK(mask) (mask & ~(numlockmask | LockMask))
 #define TABLENGTH(X)    (sizeof(X)/sizeof(*X))
 
 typedef union {
@@ -53,56 +54,60 @@ typedef struct {
 typedef struct client client;
 struct client{
     // Prev and next client
-    client *next;
-    client *prev;
+    client *next, *prev;
     // The window
     Window win;
+    unsigned int x, y, width, height;
 };
 
 typedef struct desktop desktop;
 struct desktop{
-    int master_size;
-    int mode, growth, numwins;
-    client *head;
-    client *current;
-    client *transient;
+    int master_size, mode, growth, numwins;
+    client *head,*current, *transient;
 };
 
 typedef struct {
     const char *class;
-    int preferredd;
-    int followwin;
+    unsigned int preferredd, followwin;
 } Convenience;
 
+typedef struct {
+    const char *class;
+    unsigned int x, y, width, height;
+} Positional;
+
 // Functions
-static void add_window(Window w, int tw);
-static void buttonpressed(XEvent *e);
+static void add_window(Window w, unsigned int tw);
+static void buttonpress(XEvent *e);
+static void buttonrelease(XEvent *e);
 static void change_desktop(const Arg arg);
 static void client_to_desktop(const Arg arg);
-static void configurenotify(XEvent *e);
 static void configurerequest(XEvent *e);
 static void destroynotify(XEvent *e);
-static void enternotify(XEvent *e);
 static void follow_client_to_desktop(const Arg arg);
-static void last_desktop();
-static void logger(const char* e);
 static unsigned long getcolor(const char* color);
 static void grabkeys();
 static void keypress(XEvent *e);
 static void kill_client();
 static void kill_client_now(Window w);
+static void last_desktop();
+static void logger(const char* e);
 static void maprequest(XEvent *e);
-static void move_down();
-static void move_up();
+static void motionnotify(XEvent *e);
+static void move_down(const Arg arg);
+static void move_up(const Arg arg);
+static void move_right(const Arg arg);
+static void move_left(const Arg arg);
 static void next_win();
 static void prev_win();
 static void quit();
-static void remove_window(Window w, int dr);
+static void remove_window(Window w, unsigned int dr, unsigned int tw);
 static void resize_master(const Arg arg);
 static void resize_stack(const Arg arg);
 static void rotate_desktop(const Arg arg);
-static void save_desktop(int i);
-static void select_desktop(int i);
+static void rotate_mode(const Arg arg);
+static void save_desktop(unsigned int i);
+static void select_desktop(unsigned int i);
 static void setup();
 static void sigchld(int unused);
 static void spawn(const Arg arg);
@@ -120,36 +125,31 @@ static void warp_pointer();
 
 // Variable
 static Display *dis;
-static int bool_quit;
-static int current_desktop;
-static int previous_desktop;
-static int growth;
-static int master_size;
-static int mode;
-static int panel_size;
-static int sh;
-static int sw;
-static int screen;
+static unsigned int bool_quit;
+static unsigned int current_desktop, previous_desktop;
+static unsigned int doresize;
+static unsigned int master_size, growth;
+static unsigned int mode;
+static unsigned int panel_size;
+static unsigned int sh, sw, screen;
+static unsigned int win_focus, win_unfocus;
 static int xerror(Display *dis, XErrorEvent *ee);
 static int (*xerrorxlib)(Display *, XErrorEvent *);
-static unsigned int win_focus;
-static unsigned int win_unfocus;
 unsigned int numlockmask;		/* dynamic key lock mask */
 static Window root;
-static client *head;
-static client *current;
-static client *transient;
+static client *head, *current, *transient;
 static XWindowAttributes attr;
+static XButtonEvent starter;
 
 // Events array
 static void (*events[LASTEvent])(XEvent *e) = {
     [KeyPress] = keypress,
     [MapRequest] = maprequest,
-    [EnterNotify] = enternotify,
     [UnmapNotify] = unmapnotify,
-    [ButtonPress] = buttonpressed,
+    [ButtonPress] = buttonpress,
+    [MotionNotify] = motionnotify,
+    [ButtonRelease] = buttonrelease,
     [DestroyNotify] = destroynotify,
-    [ConfigureNotify] = configurenotify,
     [ConfigureRequest] = configurerequest
 };
 
@@ -157,97 +157,94 @@ static void (*events[LASTEvent])(XEvent *e) = {
 static desktop desktops[DESKTOPS];
 
 /* ***************************** Window Management ******************************* */
-void add_window(Window w, int tw) {
-    client *c,*t;
+void add_window(Window w, unsigned int tw) {
+    client *c,*t, *dummy = head;
 
-    if(!(c = (client *)calloc(1,sizeof(client)))) {
-        logger("\033[0;31mError calloc!");
-        exit(1);
-    }
-
-    if(tw == 1) { // For the transient window
-        if(transient == NULL) {
-            c->prev = NULL; c->next = NULL;
-            c->win = w; transient = c;
-        } else {
-            t=transient;
-            c->prev = NULL; c->next = t;
-            c->win = w; t->prev = c;
-            transient = c;
+    if(tw < 2) // For shifting windows between desktops
+        if(!(c = (client *)calloc(1,sizeof(client)))) {
+            logger("\033[0;31mError calloc!");
+            exit(1);
         }
-        save_desktop(current_desktop);
-        return;
+
+    if(tw == 0) {
+        XClassHint chh = {0};
+        unsigned int i, j=0;
+        if(XGetClassHint(dis, w, &chh)) {
+            for(i=0;i<TABLENGTH(positional);i++)
+                if(strcmp(chh.res_class, positional[i].class) == 0) {
+                    XMoveResizeWindow(dis,w,positional[i].x,positional[i].y,positional[i].width,positional[i].height);
+                    j++;
+                }
+            if(chh.res_class) XFree(chh.res_class);
+            if(chh.res_name) XFree(chh.res_name);
+        } 
+        if(j < 1) {
+            XGetWindowAttributes(dis, w, &attr);
+            XMoveWindow(dis, w,sw/2-(attr.width/2),sh/2-(attr.height/2));
+        }
+        XGetWindowAttributes(dis, w, &attr);
+        c->x = attr.x;
+        if(TOP_PANEL == 0 && attr.y < panel_size) c->y = panel_size;
+        else c->y = attr.y;
+        c->width = attr.width;
+        c->height = attr.height;
     }
 
-    if(head == NULL) {
+    if(tw == 1) dummy = transient; // For the transient window
+
+    if(dummy == NULL) {
         c->next = NULL; c->prev = NULL;
-        c->win = w; head = c;
+        c->win = w; dummy = c;
     } else {
         if(ATTACH_ASIDE == 0) {
             if(TOP_STACK == 0) {
-                if(head->next == NULL) {
-                    c->prev = head; c->next = NULL;
+                if(dummy->next == NULL) {
+                    c->prev = dummy; c->next = NULL;
                 } else {
-                    t = head->next;
+                    t = dummy->next;
                     c->prev = t->prev; c->next = t;
                     t->prev = c;
                 }
-                c->win = w; head->next = c;
+                c->win = w; dummy->next = c;
             } else {
-                for(t=head;t->next;t=t->next); // Start at the last in the stack
+                for(t=dummy;t->next;t=t->next); // Start at the last in the stack
                 c->next = NULL; c->prev = t;
                 c->win = w; t->next = c;
             }
         } else {
-            t=head;
+            t=dummy;
             c->prev = NULL; c->next = t;
             c->win = w; t->prev = c;
-            head = c; current = head;
-            warp_pointer();
+            dummy = c;
         }
     }
 
+    if(tw == 1) {
+        transient = dummy;
+        save_desktop(current_desktop);
+        return;
+    } else head = dummy;
     current = head;
+    warp_pointer();
     desktops[current_desktop].numwins += 1;
     if(growth > 0) growth = growth*(desktops[current_desktop].numwins-1)/desktops[current_desktop].numwins;
     else growth = 0;
     save_desktop(current_desktop);
     // for folow mouse
-    if(FOLLOW_MOUSE == 0) XSelectInput(dis, c->win, EnterWindowMask);
+    if(FOLLOW_MOUSE == 0) XSelectInput(dis, c->win, PointerMotionMask);
 }
 
-void remove_window(Window w, int dr) {
-    client *c;
+void remove_window(Window w, unsigned int dr, unsigned int tw) {
+    client *c, *dummy = head;
 
-    if(transient != NULL) {
-        for(c=transient;c;c=c->next) {
-            if(c->win == w) {
-                if(c->prev == NULL && c->next == NULL) transient = NULL;
-                else if(c->prev == NULL) {
-                    transient = c->next; c->next->prev = NULL;
-                }
-                else if(c->next == NULL) {
-                    c->prev->next = NULL;
-                }
-                else {
-                    c->prev->next = c->next; c->next->prev = c->prev;
-                }
-                free(c);
-                save_desktop(current_desktop);
-                return;
-            }
-        }
-    }
+    if(tw == 1) dummy = transient;
 
-    for(c=head;c;c=c->next) {
+    for(c=dummy;c;c=c->next) {
         if(c->win == w) {
-            if(desktops[current_desktop].numwins < 4) growth = 0;
-            else growth = growth*(desktops[current_desktop].numwins-1)/desktops[current_desktop].numwins;
-            XUnmapWindow(dis, c->win);
             if(c->prev == NULL && c->next == NULL) {
-                head = NULL; current = NULL;
+                dummy = NULL; current = NULL;
             } else if(c->prev == NULL) {
-                head = c->next; c->next->prev = NULL;
+                dummy = c->next; c->next->prev = NULL;
                 current = c->next;
             } else if(c->next == NULL) {
                 c->prev->next = NULL; current = c->prev;
@@ -255,16 +252,23 @@ void remove_window(Window w, int dr) {
                 c->prev->next = c->next; c->next->prev = c->prev;
                 current = c->prev;
             }
-
-            if(dr == 0) free(c);
-            desktops[current_desktop].numwins -= 1;
-            save_desktop(current_desktop);
-            tile();
-            update_current();
-            if(desktops[current_desktop].numwins > 1) warp_pointer();
-            return;
+            break;
         }
     }
+    if(tw == 1) {
+        transient = dummy;
+        save_desktop(current_desktop);
+        return;
+    } else head = dummy;
+    if(desktops[current_desktop].numwins < 4) growth = 0;
+    else growth = growth*(desktops[current_desktop].numwins-1)/desktops[current_desktop].numwins;
+    if(dr == 0) free(c);
+    desktops[current_desktop].numwins -= 1;
+    save_desktop(current_desktop);
+    tile();
+    update_current();
+    if(desktops[current_desktop].numwins > 1) warp_pointer();
+    return;
 }
 
 void next_win() {
@@ -275,8 +279,7 @@ void next_win() {
         else c = current->next;
 
         current = c;
-        if(mode == 1)
-            tile();
+        if(mode == 1) tile();
         update_current(); warp_pointer();
     }
 }
@@ -289,14 +292,18 @@ void prev_win() {
         else c = current->prev;
 
         current = c;
-        if(mode == 1)
-            tile();
+        if(mode == 1) tile();
         update_current();
         warp_pointer();
     }
 }
 
-void move_down() {
+void move_down(const Arg arg) {
+    if(mode == 4 && current != NULL) {
+        current->y += arg.i;
+        XMoveResizeWindow(dis,current->win,current->x,current->y,current->width,current->height);
+        return;
+    }
     Window tmp;
     if(current == NULL || current->next == NULL || current->win == head->win || current->prev == NULL)
         return;
@@ -310,7 +317,12 @@ void move_down() {
     tile();
 }
 
-void move_up() {
+void move_up(const Arg arg) {
+    if(mode == 4 && current != NULL) {
+        current->y += arg.i;
+        XMoveResizeWindow(dis,current->win,current->x,current->y,current->width,current->height);
+        return;
+    }
     Window tmp;
     if(current == NULL || current->prev == head || current->win == head->win) {
         return;
@@ -321,6 +333,20 @@ void move_up() {
     prev_win();
     save_desktop(current_desktop);
     tile();
+}
+
+void move_left(const Arg arg) {
+    if(mode == 4 && current != NULL) {
+        current->x += arg.i;
+        XMoveResizeWindow(dis,current->win,current->x,current->y,current->width,current->height);
+    }
+}
+
+void move_right(const Arg arg) {
+    if(mode == 4 && current != NULL) {
+        current->x += arg.i;
+        XMoveResizeWindow(dis,current->win,current->x,current->y,current->width,current->height);
+    }
 }
 
 void swap_master() {
@@ -386,6 +412,11 @@ void rotate_desktop(const Arg arg) {
      change_desktop(a);
 }
 
+void rotate_mode(const Arg arg) {
+    Arg a = {.i = (mode + 5 + arg.i) % 5};
+     switch_mode(a);
+}
+
 void follow_client_to_desktop(const Arg arg) {
     client_to_desktop(arg);
     change_desktop(arg);
@@ -393,23 +424,23 @@ void follow_client_to_desktop(const Arg arg) {
 
 void client_to_desktop(const Arg arg) {
     client *tmp = current;
-    int tmp2 = current_desktop;
+    unsigned int tmp2 = current_desktop;
 
-    if(arg.i == current_desktop || current == NULL)
-        return;
+    if(arg.i == current_desktop || current == NULL) return;
+
+    // Remove client from current desktop
+    XUnmapWindow(dis,current->win);
+    remove_window(current->win, 1, 0);
 
     // Add client to desktop
     select_desktop(arg.i);
-    add_window(tmp->win, 0);
+    add_window(tmp->win, 2);
     save_desktop(arg.i);
 
-    // Remove client from current desktop
     select_desktop(tmp2);
-    XUnmapWindow(dis,tmp->win);
-    remove_window(tmp->win, 0);
 }
 
-void save_desktop(int i) {
+void save_desktop(unsigned int i) {
     desktops[i].master_size = master_size;
     desktops[i].mode = mode;
     desktops[i].growth = growth;
@@ -418,7 +449,7 @@ void save_desktop(int i) {
     desktops[i].transient = transient;
 }
 
-void select_desktop(int i) {
+void select_desktop(unsigned int i) {
     master_size = desktops[i].master_size;
     mode = desktops[i].mode;
     growth = desktops[i].growth;
@@ -430,13 +461,13 @@ void select_desktop(int i) {
 
 void tile() {
     client *c;
-    int n = 0,x = 0, y = 0;
+    unsigned int n = 0, x = 0, y = 0;
 
     // For a top panel
     if(TOP_PANEL == 0) y = panel_size;
 
     // If only one window
-    if(head != NULL && head->next == NULL) {
+    if(mode != 4 && head != NULL && head->next == NULL) {
         if(mode == 1) XMapWindow(dis, current->win);
         XMoveResizeWindow(dis,head->win,0,y,sw+2*BORDER_WIDTH,sh+2*BORDER_WIDTH);
     }
@@ -474,7 +505,7 @@ void tile() {
                 }
                 break;
             case 3: { // Grid
-                int xpos = 0, wdt = 0, ht = 0;
+                unsigned int xpos = 0, wdt = 0, ht = 0;
 
                 for(c=head;c;c=c->next) ++x;
                 for(c=head;c;c=c->next) {
@@ -515,6 +546,11 @@ void tile() {
                     XMoveResizeWindow(dis,c->win,xpos,y,wdt,ht);
                 }
                 break;
+            case 4: // Stacking
+                for(c=head;c;c=c->next) {
+                    XMoveResizeWindow(dis,c->win,c->x,c->y,c->width,c->height);
+                }
+                break;
             }
             default:
                 break;
@@ -545,10 +581,6 @@ void update_current() {
                 XGrabButton(dis, AnyButton, AnyModifier, c->win, True, ButtonPressMask|ButtonReleaseMask, GrabModeAsync, GrabModeAsync, None, None);
         }
     }
-    if(transient != NULL) {
-        XSetInputFocus(dis,transient->win,RevertToParent,CurrentTime);
-        XRaiseWindow(dis,transient->win);
-    }
     XSync(dis, False);
 }
 
@@ -564,7 +596,7 @@ void switch_mode(const Arg arg) {
     }
 
     mode = arg.i;
-    if(mode == 0 || mode == 3) master_size = sw * MASTER_SIZE;
+    if(mode == 0 || mode == 3 || mode == 4) master_size = sw * MASTER_SIZE;
     if(mode == 1 && current != NULL && head->next != NULL)
         for(c=head;c;c=c->next)
             XUnmapWindow(dis, c->win);
@@ -576,7 +608,10 @@ void switch_mode(const Arg arg) {
 }
 
 void resize_master(const Arg arg) {
-    if(arg.i > 0) {
+    if(mode == 4 && current != NULL) {
+        current->width += arg.i;
+        XMoveResizeWindow(dis,current->win,current->x,current->y,current->width,current->height);
+    } else if(arg.i > 0) {
         if((mode != 2 && sw-master_size > 70) || (mode == 2 && sh-master_size > 70))
             master_size += arg.i;
     } else if(master_size > 70) master_size += arg.i;
@@ -584,8 +619,11 @@ void resize_master(const Arg arg) {
 }
 
 void resize_stack(const Arg arg) {
-    if(desktops[current_desktop].numwins > 2) {
-        int n = desktops[current_desktop].numwins-1;
+    if(mode == 4 && current != NULL) {
+        current->height += arg.i;
+        XMoveResizeWindow(dis,current->win,current->x,current->y,current->width,current->height+arg.i);
+    } else if(desktops[current_desktop].numwins > 2) {
+        unsigned int n = desktops[current_desktop].numwins-1;
         if(arg.i >0) {
             if((mode != 2 && sh-(growth+sh/n) > (n-1)*70) || (mode == 2 && sw-(growth+sw/n) > (n-1)*70))
                 growth += arg.i;
@@ -612,8 +650,20 @@ void toggle_panel() {
 
 /* ********************** Keyboard Management ********************** */
 void grabkeys() {
-    int i;
+    unsigned int i,j;
     KeyCode code;
+
+    // numlock workaround
+    XModifierKeymap *modmap;
+    numlockmask = 0;
+    modmap = XGetModifierMapping(dis);
+    for (i = 0; i < 8; i++) {
+        for (j = 0; j < modmap->max_keypermod; j++) {
+            if(modmap->modifiermap[i * modmap->max_keypermod + j] == XKeysymToKeycode(dis, XK_Num_Lock))
+                numlockmask = (1 << i);
+        }
+    }
+    XFreeModifiermap(modmap);
 
     XUngrabKey(dis, AnyKey, AnyModifier, root);
     // For each shortcuts
@@ -624,16 +674,21 @@ void grabkeys() {
         XGrabKey(dis, code, keys[i].mod | numlockmask, root, True, GrabModeAsync, GrabModeAsync);
         XGrabKey(dis, code, keys[i].mod | numlockmask | LockMask, root, True, GrabModeAsync, GrabModeAsync);
     }
+    for(i=1;i<4;i+=2) {
+        XGrabButton(dis, i, RESIZEMOVEKEY, root, True, ButtonPressMask, GrabModeAsync, GrabModeAsync, None, None);
+        XGrabButton(dis, i, RESIZEMOVEKEY | LockMask, root, True, ButtonPressMask, GrabModeAsync, GrabModeAsync, None, None);
+        XGrabButton(dis, i, RESIZEMOVEKEY | numlockmask, root, True, ButtonPressMask, GrabModeAsync, GrabModeAsync, None, None);
+        XGrabButton(dis, i, RESIZEMOVEKEY | numlockmask | LockMask, root, True, ButtonPressMask, GrabModeAsync, GrabModeAsync, None, None);
+    }
 }
 
 void keypress(XEvent *e) {
-    static unsigned int len = sizeof keys / sizeof keys[0];
     unsigned int i;
     KeySym keysym;
     XKeyEvent *ev = &e->xkey;
 
     keysym = XkbKeycodeToKeysym(dis, (KeyCode)ev->keycode, 0, 0);
-    for(i = 0; i < len; i++) {
+    for(i = 0; i < TABLENGTH(keys); i++) {
         if(keysym == keys[i].keysym && CLEANMASK(keys[i].mod) == CLEANMASK(ev->state)) {
             if(keys[i].function)
                 keys[i].function(keys[i].arg);
@@ -649,15 +704,11 @@ void warp_pointer() {
     }
 }
 
-void configurenotify(XEvent *e) {
-    // Do nothing for the moment
-}
-
 /* ********************** Signal Management ************************** */
 void configurerequest(XEvent *e) {
     XConfigureRequestEvent *ev = &e->xconfigurerequest;
     XWindowChanges wc;
-    int y = 0;
+    unsigned int y = 0;
 
     wc.x = ev->x;
     if(TOP_PANEL == 0) y = panel_size;
@@ -679,7 +730,7 @@ void maprequest(XEvent *e) {
     XGetWindowAttributes(dis, ev->window, &attr);
     if(attr.override_redirect) return;
 
-    int y=0;
+    unsigned int y=0;
     if(TOP_PANEL == 0) y = panel_size;
     // For fullscreen mplayer (and maybe some other program)
     client *c;
@@ -693,20 +744,21 @@ void maprequest(XEvent *e) {
 
    	Window trans = None;
     if (XGetTransientForHint(dis, ev->window, &trans) && trans != None) {
-        add_window(ev->window, 1); XMapWindow(dis, ev->window);
+        add_window(ev->window, 1); 
         if((attr.y + attr.height) > sh)
             XMoveResizeWindow(dis,ev->window,attr.x,y,attr.width,attr.height-10);
         XSetWindowBorderWidth(dis,ev->window,BORDER_WIDTH);
         XSetWindowBorder(dis,ev->window,win_focus);
-        update_current();
+        XSetInputFocus(dis,ev->window,RevertToParent,CurrentTime);
+        XMapWindow(dis, ev->window);
+        XRaiseWindow(dis,ev->window);
         return;
     }
 
     XClassHint ch = {0};
-    static unsigned int len = sizeof convenience / sizeof convenience[0];
-    int i=0, j=0, tmp = current_desktop;
+    unsigned int i=0, j=0, tmp = current_desktop;
     if(XGetClassHint(dis, ev->window, &ch))
-        for(i=0;i<len;i++)
+        for(i=0;i<TABLENGTH(convenience);i++)
             if(strcmp(ch.res_class, convenience[i].class) == 0) {
                 save_desktop(tmp);
                 select_desktop(convenience[i].preferredd-1);
@@ -715,8 +767,8 @@ void maprequest(XEvent *e) {
                         ++j;
                 if(j < 1) add_window(ev->window, 0);
                 if(tmp == convenience[i].preferredd-1) {
-                    XMapWindow(dis, ev->window);
                     tile();
+                    XMapWindow(dis, ev->window);
                     update_current();
                 } else select_desktop(tmp);
                 if(convenience[i].followwin != 0) {
@@ -727,31 +779,34 @@ void maprequest(XEvent *e) {
                 if(ch.res_name) XFree(ch.res_name);
                 return;
             }
+    if(ch.res_class) XFree(ch.res_class);
+    if(ch.res_name) XFree(ch.res_name);
 
     add_window(ev->window, 0);
-    tile();
+    if(mode != 4) tile();
     if(mode != 1) XMapWindow(dis,ev->window);
     update_current();
 }
 
 void destroynotify(XEvent *e) {
-    int i = 0, tmp = current_desktop;
+    unsigned int i = 0, tmp = current_desktop;
     client *c;
     XDestroyWindowEvent *ev = &e->xdestroywindow;
 
-    if(transient != NULL) {
-        for(c=transient;c;c=c->next)
-            if(ev->window == c->win) {
-                remove_window(ev->window, 0);
-                return;
-            }
-    }
     save_desktop(tmp);
-    for(i=0;i<TABLENGTH(desktops);++i) {
-        select_desktop(i);
+    for(i=current_desktop;i<current_desktop+DESKTOPS;++i) {
+        select_desktop(i%DESKTOPS);
+        if(transient != NULL) {
+            for(c=transient;c;c=c->next)
+                if(ev->window == c->win) {
+                    remove_window(ev->window, 0, 1);
+                    select_desktop(tmp);
+                    return;
+                }
+        }
         for(c=head;c;c=c->next)
             if(ev->window == c->win) {
-                remove_window(ev->window, 0);
+                remove_window(ev->window, 0, 0);
                 select_desktop(tmp);
                 return;
             }
@@ -759,26 +814,30 @@ void destroynotify(XEvent *e) {
     select_desktop(tmp);
 }
 
-void enternotify(XEvent *e) {
-    client *c;
-    XCrossingEvent *ev = &e->xcrossing;
 
-    if(FOLLOW_MOUSE == 0) {
-        if((ev->mode != NotifyNormal || ev->detail == NotifyInferior) && ev->window != root)
-            return;
-        if(transient != NULL) return;
-        for(c=head;c;c=c->next)
-           if(ev->window == c->win) {
-                current = c;
-                update_current();
-                return;
-       }
-   }
+void unmapnotify(XEvent *e) { // for thunderbird's write window and maybe others
+    XUnmapEvent *ev = &e->xunmap;
+    unsigned int i = 0, tmp = current_desktop;
+    client *c;
+
+    if(ev->send_event == 1) {
+        save_desktop(tmp);
+        for(i=current_desktop;i<current_desktop+DESKTOPS;++i) {
+            select_desktop(i%DESKTOPS);
+            for(c=head;c;c=c->next)
+                if(ev->window == c->win) {
+                    remove_window(ev->window, 1, 0);
+                    select_desktop(tmp);
+                    return;
+                }
+        }
+        select_desktop(tmp);
+    }
 }
 
-void buttonpressed(XEvent *e) {
+void buttonpress(XEvent *e) {
+    XButtonEvent *ev = &e->xbutton;
     client *c;
-    XButtonPressedEvent *ev = &e->xbutton;
 
     // change focus with LMB
     if(CLICK_TO_FOCUS == 0 && ev->window != current->win && ev->button == Button1)
@@ -788,32 +847,60 @@ void buttonpressed(XEvent *e) {
                 update_current();
                 return;
             }
+
+    if(ev->subwindow == None) return;
+    if(mode == 4) {
+        XGrabPointer(dis, ev->subwindow, True, PointerMotionMask|ButtonReleaseMask, GrabModeAsync, GrabModeAsync, None, None, CurrentTime);
+        XGetWindowAttributes(dis, ev->subwindow, &attr);
+        starter = e->xbutton; doresize = 1;
+    }
 }
 
-void unmapnotify(XEvent *e) { // for thunderbird's write window and maybe others
-    XUnmapEvent *ev = &e->xunmap;
-    int i = 0, tmp = current_desktop;
+void motionnotify(XEvent *e) {
+    int xdiff, ydiff;
     client *c;
+    XMotionEvent *ev = &e->xmotion;
 
-    if(ev->send_event == 1) {
-        save_desktop(tmp);
-        for(i=0;i<TABLENGTH(desktops);++i) {
-            select_desktop(i);
-            for(c=head;c;c=c->next)
-                if(ev->window == c->win) {
-                    remove_window(ev->window, 1);
-                    select_desktop(tmp);
-                    return;
-                }
-        }
-        select_desktop(tmp);
+    if(ev->window != current->win) {
+        for(c=head;c;c=c->next)
+           if(ev->window == c->win) {
+                current = c;
+                update_current();
+                return;
+           }
     }
+    if(doresize < 1) return;
+    while(XCheckTypedEvent(dis, MotionNotify, e));
+    xdiff = ev->x_root - starter.x_root;
+    ydiff = ev->y_root - starter.y_root;
+    XMoveResizeWindow(dis, ev->window, attr.x + (starter.button==1 ? xdiff : 0), attr.y + (starter.button==1 ? ydiff : 0),
+        MAX(1, attr.width + (starter.button==3 ? xdiff : 0)),
+        MAX(1, attr.height + (starter.button==3 ? ydiff : 0)));
+}
+
+void buttonrelease(XEvent *e) {
+    client *c;
+    XButtonEvent *ev = &e->xbutton;
+
+    XUngrabPointer(dis, CurrentTime);
+    if(mode == 4) {
+        for(c=head;c;c=c->next)
+            if(ev->window == c->win) {
+                XGetWindowAttributes(dis, c->win, &attr);
+                c->x = attr.x;
+                c->y = attr.y;
+                c->width = attr.width;
+                c->height = attr.height;
+            }
+        update_current();
+    }
+    doresize = 0;
 }
 
 void kill_client() {
     if(head == NULL) return;
     kill_client_now(current->win);
-    remove_window(current->win, 0);
+    remove_window(current->win, 0, 0);
 }
 
 void kill_client_now(Window w) {
@@ -840,7 +927,7 @@ void kill_client_now(Window w) {
 void quit() {
     Window root_return, parent;
     Window *children;
-    int i;
+    unsigned int i;
     unsigned int nchildren; 
 
     logger("\033[0;34mYou Quit : Thanks for using!");
@@ -869,7 +956,7 @@ void logger(const char* e) {
 }
 
 void setup() {
-    int i, j, k;
+    unsigned int i;
 
     // Install a signal
     sigchld(0);
@@ -889,28 +976,8 @@ void setup() {
     win_focus = getcolor(FOCUS);
     win_unfocus = getcolor(UNFOCUS);
 
-    // numlock workaround
-    XModifierKeymap *modmap;
-    numlockmask = 0;
-    modmap = XGetModifierMapping(dis);
-    for (k = 0; k < 8; k++) {
-        for (j = 0; j < modmap->max_keypermod; j++) {
-            if(modmap->modifiermap[k * modmap->max_keypermod + j] == XKeysymToKeycode(dis, XK_Num_Lock))
-                numlockmask = (1 << k);
-        }
-    }
-    XFreeModifiermap(modmap);
-
     // Shortcuts
     grabkeys();
-
-    // Default stack
-    mode = DEFAULT_MODE;
-
-    // List of client
-    head = NULL;
-    current = NULL;
-    transient = NULL;
 
     // Master size
     if(mode == 2) master_size = sh*MASTER_SIZE;
@@ -919,17 +986,16 @@ void setup() {
     // Set up all desktop
     for(i=0;i<TABLENGTH(desktops);++i) {
         desktops[i].master_size = master_size;
-        desktops[i].mode = mode;
+        desktops[i].mode = DEFAULT_MODE;
         desktops[i].growth = 0;
         desktops[i].numwins = 0;
-        desktops[i].head = head;
-        desktops[i].current = current;
-        desktops[i].transient = transient;
+        desktops[i].head = NULL;
+        desktops[i].current = NULL;
+        desktops[i].transient = NULL;
     }
 
     // Select first dekstop by default
     const Arg arg = {.i = 0};
-    current_desktop = arg.i;
     change_desktop(arg);
     // To catch maprequest and destroynotify (if other wm running)
     XSelectInput(dis,root,SubstructureNotifyMask|SubstructureRedirectMask);
@@ -960,8 +1026,7 @@ void spawn(const Arg arg) {
 
 /* There's no way to check accesses to destroyed windows, thus those cases are ignored (especially on UnmapNotify's).  Other types of errors call Xlibs default error handler, which may call exit.  */
 int xerror(Display *dis, XErrorEvent *ee) {
-    if(ee->error_code == BadWindow
-	|| (ee->request_code == X_SetInputFocus && ee->error_code == BadMatch)
+    if(ee->error_code == BadWindow || (ee->request_code == X_SetInputFocus && ee->error_code == BadMatch)
 	|| (ee->request_code == X_PolyText8 && ee->error_code == BadDrawable)
 	|| (ee->request_code == X_PolyFillRectangle && ee->error_code == BadDrawable)
 	|| (ee->request_code == X_PolySegment && ee->error_code == BadDrawable)
