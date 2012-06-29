@@ -749,8 +749,8 @@ void maprequest(XEvent *e) {
             XMoveResizeWindow(dis,ev->window,attr.x,y,attr.width,attr.height-10);
         XSetWindowBorderWidth(dis,ev->window,BORDER_WIDTH);
         XSetWindowBorder(dis,ev->window,win_focus);
-        XSetInputFocus(dis,ev->window,RevertToParent,CurrentTime);
         XMapWindow(dis, ev->window);
+        XSetInputFocus(dis,ev->window,RevertToParent,CurrentTime);
         XRaiseWindow(dis,ev->window);
         return;
     }
@@ -838,6 +838,7 @@ void unmapnotify(XEvent *e) { // for thunderbird's write window and maybe others
 void buttonpress(XEvent *e) {
     XButtonEvent *ev = &e->xbutton;
     client *c;
+    int i = 0;
 
     // change focus with LMB
     if(CLICK_TO_FOCUS == 0 && ev->window != current->win && ev->button == Button1)
@@ -845,11 +846,16 @@ void buttonpress(XEvent *e) {
             if(ev->window == c->win) {
                 current = c;
                 update_current();
+                XSendEvent(dis, PointerWindow, False, 0xfff, e);
+                XFlush(dis);
                 return;
             }
 
     if(ev->subwindow == None) return;
     if(mode == 4) {
+        for(c=head;c;c=c->next)
+            if(ev->subwindow == c->win) i = 1;
+        if(i == 0) return;
         XGrabPointer(dis, ev->subwindow, True, PointerMotionMask|ButtonReleaseMask, GrabModeAsync, GrabModeAsync, None, None, CurrentTime);
         XGetWindowAttributes(dis, ev->subwindow, &attr);
         starter = e->xbutton; doresize = 1;
@@ -882,6 +888,11 @@ void buttonrelease(XEvent *e) {
     client *c;
     XButtonEvent *ev = &e->xbutton;
 
+    if(doresize < 1) {
+        XSendEvent(dis, PointerWindow, False, 0xfff, e);
+        XFlush(dis);
+        return;
+    }
     XUngrabPointer(dis, CurrentTime);
     if(mode == 4) {
         for(c=head;c;c=c->next)
@@ -925,18 +936,20 @@ void kill_client_now(Window w) {
 }
 
 void quit() {
-    Window root_return, parent;
-    Window *children;
     unsigned int i;
-    unsigned int nchildren; 
+    client *c;
 
-    logger("\033[0;34mYou Quit : Thanks for using!");
+    for(i=0;i<DESKTOPS;++i) {
+        select_desktop(i);
+        for(c=head;c;c=c->next)
+            XUnmapWindow(dis, c->win);
+            kill_client_now(current->win);
+    }
+    XClearWindow(dis, root);
     XUngrabKey(dis, AnyKey, AnyModifier, root);
-    XQueryTree(dis, root, &root_return, &parent, &children, &nchildren);
-    for(i = 0; i < nchildren; i++)
-        kill_client_now(children[i]);
-
-    XDestroySubwindows(dis, root);
+    XSync(dis, False);
+    XSetInputFocus(dis, root, RevertToPointerRoot, CurrentTime);
+    logger("\033[0;34mYou Quit : Bye!");
     bool_quit = 1;
 }
 
@@ -1062,7 +1075,6 @@ int main(int argc, char **argv) {
     start();
 
     // Close display
-    logger("\033[0;35m BYE");
     XCloseDisplay(dis);
 
     exit(0);

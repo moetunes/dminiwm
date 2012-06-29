@@ -12,7 +12,7 @@
 #define SHOW_BAR        0  /* 1=Don't 0=Have the bar shown with a window open */
 #define BORDER_WIDTH    2
 #define ATTACH_ASIDE    1  /* 0=TRUE, 1=New window is master */
-#define TOP_STACK       0  /* 0=TRUE, 1=New window added to bottom of stack when using ATTACH_ASIDE */
+#define TOP_STACK       1  /* 0=TRUE, 1=New window added to bottom of stack when using ATTACH_ASIDE */
 #define DEFAULT_MODE    0  /* 0=Vertical, 1=Fullscreen 2=Horizontal 3=grid*/
 // Only one of FOLLOW_MOUSE and CLICK_TO_FOCUS should be zero
 #define FOLLOW_MOUSE    1  /* 1=Don't 0=Focus the window the mouse just entered */
