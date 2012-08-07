@@ -1,3 +1,12 @@
+7/8/12
+  Changed grid. First column and second window are resizable
+  Fixed kill client and quit
+  The order windows are focused in is remembered
+
+29/6/12
+  Don't allow unmanaged windows to be moved
+  Quieter quit
+
 27/4/12
   Added stacking mode
 

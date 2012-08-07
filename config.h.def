@@ -1,4 +1,4 @@
- /* config.h for dminiwm.c [ 0.3.8 ] */
+ /* config.h for dminiwm.c [ 0.4.1 ] */
 
 #ifndef CONFIG_H
 #define CONFIG_H
@@ -8,7 +8,7 @@
 #define MASTER_SIZE     0.52
 #define RESIZEMOVEKEY   MOD1
 #define TOP_PANEL       0  /* 1=Don't 0=Have the panel at the top instead of the bottom */
-#define PANEL_HEIGHT	18 /* 0 for no space for a panel */
+#define PANEL_HEIGHT    18 /* 0 for no space for a panel */
 #define SHOW_BAR        0  /* 1=Don't 0=Have the bar shown with a window open */
 #define BORDER_WIDTH    2
 #define ATTACH_ASIDE    1  /* 0=TRUE, 1=New window is master */
@@ -67,7 +67,7 @@ static key keys[] = {
     {  MOD1,             XK_j,          next_win,          {NULL}},
     {  MOD1,             XK_k,          prev_win,          {NULL}},
     {  MOD1,             XK_v,          spawn,             {.com = dmenucmd}},
-    {  MOD1,             XK_p,          resize_stack,      {.i = 10}},
+    {  MOD1,             XK_p,          resize_stack,      {.i = +10}},
     {  MOD1,             XK_o,          resize_stack,      {.i = -10}},
     {  MOD1,             XK_Tab,        last_desktop,      {NULL}},
     {  MOD1,             XK_b,          toggle_panel,      {NULL}},
