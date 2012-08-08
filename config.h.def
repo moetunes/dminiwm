@@ -5,6 +5,7 @@
 
 #define MOD1            Mod1Mask
 #define MOD4            Mod4Mask
+#define OUTPUT_INFO     0 /* 1=Don't 0=Output info for bipolarbar */
 #define MASTER_SIZE     0.52
 #define RESIZEMOVEKEY   MOD1
 #define TOP_PANEL       0  /* 1=Don't 0=Have the panel at the top instead of the bottom */

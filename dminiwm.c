@@ -137,7 +137,7 @@ static Window root;
 static client *head, *current, *transient;
 static XWindowAttributes attr;
 static XButtonEvent starter;
-static Atom *protocols, wm_delete_window;
+static Atom *protocols, wm_delete_window, protos;
 
 // Events array
 static void (*events[LASTEvent])(XEvent *e) = {
@@ -188,7 +188,7 @@ void add_window(Window w, unsigned int tw) {
         c->height = attr.height;
     }
 
-    c->order = 0; c->win = w;
+    c->win = w; c->order = 0;
     if(tw == 1) dummy = transient; // For the transient window
     for(t=dummy;t;t=t->next)
         t->order++;
@@ -264,9 +264,9 @@ void remove_window(Window w, unsigned int dr, unsigned int tw) {
             }
         } else current = NULL;
         if(dr == 0) free(c);
-        save_desktop(current_desktop);
         if(desktops[current_desktop].numwins < 3) growth = 0;
         else growth = growth*(desktops[current_desktop].numwins-1)/desktops[current_desktop].numwins;
+        save_desktop(current_desktop);
         if(mode != 4) tile();
         warp_pointer();
         update_current();
@@ -370,6 +370,8 @@ void swap_master() {
 /* **************************** Desktop Management ************************************* */
 void update_info() {
     int i, j;
+
+    if(OUTPUT_INFO != 0) return;
     for(i=0;i<DESKTOPS;i++) {
         j = (i == current_desktop) ? 1 : 0;
         printf("%d:%d:%d ", i, desktops[i].numwins, j);
@@ -553,8 +555,12 @@ void tile() {
                 }
                 break;
             case 4: // Stacking
-                for(c=head;c;c=c->next) {
-                    XMoveResizeWindow(dis,c->win,c->x,c->y,c->width,c->height);
+                for(x=desktops[current_desktop].numwins;x>0;x--) {
+                    for(c=head;c;c=c->next)
+                        if(c->order == (x-1)) {
+                            XMoveResizeWindow(dis,c->win,c->x,c->y,c->width,c->height);
+                            break;
+                        }
                 }
                 break;
             default:
@@ -574,7 +580,6 @@ void update_current() {
         if(c != current || transient != NULL) {
             if(c->order < current->order) c->order++;
             XSetWindowBorder(dis,c->win,win_unfocus);
-            XLowerWindow(dis,c->win);
             if(CLICK_TO_FOCUS == 0)
                 XGrabButton(dis, AnyButton, AnyModifier, c->win, True, ButtonPressMask|ButtonReleaseMask, GrabModeAsync, GrabModeAsync, None, None);
         }
@@ -854,6 +859,7 @@ void buttonpress(XEvent *e) {
             if(ev->window == c->win) {
                 current = c;
                 update_current();
+                if(mode == 4) tile();
                 XSendEvent(dis, PointerWindow, False, 0xfff, e);
                 XFlush(dis);
                 return;
@@ -879,6 +885,7 @@ void motionnotify(XEvent *e) {
            if(ev->window == c->win) {
                 current = c;
                 update_current();
+                if(mode == 4) tile();
                 return;
            }
     }
@@ -929,7 +936,7 @@ void kill_client_now(Window w) {
             if (protocols[i] == wm_delete_window) {
                 ke.type = ClientMessage;
                 ke.xclient.window = w;
-                ke.xclient.message_type = XInternAtom(dis, "WM_PROTOCOLS", False);
+                ke.xclient.message_type = protos;
                 ke.xclient.format = 32;
                 ke.xclient.data.l[0] = wm_delete_window;
                 ke.xclient.data.l[1] = CurrentTime;
@@ -1013,7 +1020,8 @@ void setup() {
     // Select first desktop by default
     select_desktop(0);
     // To catch maprequest and destroynotify (if other wm running)
-    wm_delete_window = XInternAtom(dis, "WM_DELETE_WINDOW", False); 
+    wm_delete_window = XInternAtom(dis, "WM_DELETE_WINDOW", False);
+    protos = XInternAtom(dis, "WM_PROTOCOLS", False);
     XSelectInput(dis,root,SubstructureNotifyMask|SubstructureRedirectMask);
     XSetErrorHandler(xerror);
     // For exiting
