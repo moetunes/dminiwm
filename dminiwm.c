@@ -62,7 +62,7 @@ struct client{
 
 typedef struct desktop desktop;
 struct desktop{
-    int master_size, mode, growth, numwins;
+    int master_size, mode, growth, numwins, nmaster;
     client *head,*current, *transient;
 };
 
@@ -94,6 +94,7 @@ static void last_desktop();
 static void logger(const char* e);
 static void maprequest(XEvent *e);
 static void motionnotify(XEvent *e);
+static void more_master(const Arg arg);
 static void move_down(const Arg arg);
 static void move_up(const Arg arg);
 static void move_right(const Arg arg);
@@ -127,7 +128,7 @@ static void warp_pointer();
 // Variable
 static Display *dis;
 static unsigned int bool_quit, current_desktop, previous_desktop, doresize;
-static int growth, sh, sw, master_size;
+static int growth, sh, sw, master_size, nmaster;
 static unsigned int mode, panel_size, screen;
 static unsigned int win_focus, win_unfocus;
 static int xerror(Display *dis, XErrorEvent *ee);
@@ -458,6 +459,7 @@ void client_to_desktop(const Arg arg) {
 
 void save_desktop(unsigned int i) {
     desktops[i].master_size = master_size;
+    desktops[i].nmaster = nmaster;
     desktops[i].mode = mode;
     desktops[i].growth = growth;
     desktops[i].head = head;
@@ -467,6 +469,7 @@ void save_desktop(unsigned int i) {
 
 void select_desktop(unsigned int i) {
     master_size = desktops[i].master_size;
+    nmaster = desktops[i].nmaster;
     mode = desktops[i].mode;
     growth = desktops[i].growth;
     head = desktops[i].head;
@@ -475,13 +478,27 @@ void select_desktop(unsigned int i) {
     current_desktop = i;
 }
 
+void more_master (const Arg arg) {
+    if(arg.i > 0) {
+        if((desktops[current_desktop].numwins < 3) ||
+        (nmaster == (desktops[current_desktop].numwins-2))) return;
+        nmaster += arg.i;
+    } else {
+        if(nmaster == 0) return;
+        nmaster += arg.i;
+    }
+    save_desktop(current_desktop);
+    tile();
+    update_current();
+}
+
 void tile() {
-    client *c, *d;
-    unsigned int x = 0, xpos = 0, ypos=0, wdt = 0, msw, ssw, ncols = 2, nrows = 1;
+    client *c, *d = NULL;
+    unsigned int x = 0, xpos = 0, ypos, wdt = 0, msw, ssw, ncols = 2, nrows = 1;
     int ht = 0, y = 0, n = 0;
 
     // For a top panel
-    if(TOP_PANEL == 0) y = panel_size;
+    if(TOP_PANEL == 0) y = panel_size; ypos = y;
 
     // If only one window
     if(mode != 4 && head != NULL && head->next == NULL) {
@@ -491,13 +508,22 @@ void tile() {
         switch(mode) {
             case 0: /* Vertical */
             	// Master window
-                XMoveResizeWindow(dis,head->win,0,y,master_size - BORDER_WIDTH,sh - BORDER_WIDTH);
+            	if(nmaster < 1)
+                    XMoveResizeWindow(dis,head->win,0,y,master_size - BORDER_WIDTH,sh - BORDER_WIDTH);
+                else {
+                    for(d=head;d;d=d->next) {
+                        XMoveResizeWindow(dis,d->win,0,ypos,master_size - BORDER_WIDTH,sh/(nmaster+1) - BORDER_WIDTH);
+                        if(x == nmaster) break;
+                        ypos += sh/(nmaster+1); x++;
+                    }
+                }
 
                 // Stack
-                n = desktops[current_desktop].numwins - 1;
-                XMoveResizeWindow(dis,head->next->win,master_size + BORDER_WIDTH,y,sw-master_size-(2*BORDER_WIDTH),(sh/n)+growth - BORDER_WIDTH);
+                if(d == NULL) d = head;
+                n = desktops[current_desktop].numwins - (nmaster+1);
+                XMoveResizeWindow(dis,d->next->win,master_size + BORDER_WIDTH,y,sw-master_size-(2*BORDER_WIDTH),(sh/n)+growth - BORDER_WIDTH);
                 y += (sh/n)+growth;
-                for(c=head->next->next;c;c=c->next) {
+                for(c=d->next->next;c;c=c->next) {
                     XMoveResizeWindow(dis,c->win,master_size + BORDER_WIDTH,y,sw-master_size-(2*BORDER_WIDTH),(sh/n)-(growth/(n-1)) - BORDER_WIDTH);
                     y += (sh/n)-(growth/(n-1));
                 }
@@ -508,15 +534,24 @@ void tile() {
                 break;
             case 2: /* Horizontal */
             	// Master window
-                XMoveResizeWindow(dis,head->win,0,y,sw-BORDER_WIDTH,master_size - BORDER_WIDTH);
+            	if(nmaster < 1)
+                    XMoveResizeWindow(dis,head->win,xpos,ypos,sw-BORDER_WIDTH,master_size-BORDER_WIDTH);
+                else {
+                    for(d=head;d;d=d->next) {
+                        XMoveResizeWindow(dis,d->win,xpos,ypos,sw/(nmaster+1)-BORDER_WIDTH,master_size-BORDER_WIDTH);
+                        if(x == nmaster) break;
+                        xpos += sw/(nmaster+1); x++;
+                    }
+                }
 
                 // Stack
-                for(c=head->next;c;c=c->next) ++n;
-                XMoveResizeWindow(dis,head->next->win,0,y+master_size + BORDER_WIDTH,(sw/n)+growth-BORDER_WIDTH,sh-master_size-(2*BORDER_WIDTH));
-                x = (sw/n)+growth;
-                for(c=head->next->next;c;c=c->next) {
-                    XMoveResizeWindow(dis,c->win,x,y+master_size + BORDER_WIDTH,(sw/n)-(growth/(n-1)) - BORDER_WIDTH,sh-master_size-(2*BORDER_WIDTH));
-                    x += (sw/n)-(growth/(n-1));
+                if(d == NULL) d = head;
+                n = desktops[current_desktop].numwins - (nmaster+1);
+                XMoveResizeWindow(dis,d->next->win,0,y+master_size + BORDER_WIDTH,(sw/n)+growth-BORDER_WIDTH,sh-master_size-(2*BORDER_WIDTH));
+                msw = (sw/n)+growth;
+                for(c=d->next->next;c;c=c->next) {
+                    XMoveResizeWindow(dis,c->win,msw,y+master_size + BORDER_WIDTH,(sw/n)-(growth/(n-1)) - BORDER_WIDTH,sh-master_size-(2*BORDER_WIDTH));
+                    msw += (sw/n)-(growth/(n-1));
                 }
                 break;
             case 3: // Grid
@@ -629,6 +664,7 @@ void resize_stack(const Arg arg) {
     if(mode == 4 && current != NULL) {
         current->height += arg.i;
         XMoveResizeWindow(dis,current->win,current->x,current->y,current->width,current->height+arg.i);
+    } else if(nmaster == (desktops[current_desktop].numwins-2)) { return;
     } else if(mode == 3) {
         if(arg.i > 0 && ((sh/2+growth) < (sh-100))) growth += arg.i;
         else if(arg.i < 0 && ((sh/2+growth) > 80)) growth += arg.i;
@@ -1002,6 +1038,7 @@ void setup() {
     // Set up all desktop
     for(i=0;i<TABLENGTH(desktops);++i) {
         desktops[i].master_size = master_size;
+        desktops[i].nmaster = 0;
         desktops[i].mode = DEFAULT_MODE;
         desktops[i].growth = 0;
         desktops[i].numwins = 0;
