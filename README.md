@@ -72,9 +72,9 @@ It allows the "normal" method of tiling window managers(with the new window as t
 ###Recent Changes
 --------------
 
-27/4/12
+9/8/12
 
->	Added stacking mode
+>	In horizontal or vertical tiling modes windows can be added to the master area with keyboard shortcuts
 
 ###Status
 ------
@@ -94,6 +94,8 @@ There are more options in the config file than the original catwm.
   * Option in the config file to not show a panel when a window is open.
   * Last focused window is refocused and the mouse moved to it on desktop change
   * Added option in the config to have new window opened top or bottom of the stack when using atach aside
+  * Added stacking mode
+  * Changed grid mode so first column and second window are resizable
 
 
 ###Installation

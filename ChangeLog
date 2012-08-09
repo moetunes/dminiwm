@@ -1,3 +1,7 @@
+9/8/12
+  In vertical or horizontal mode can now add windows to the master area
+    with keyboard shortcuts.
+
 7/8/12
   Changed grid. First column and second window are resizable
   Fixed kill client and quit
