@@ -267,6 +267,7 @@ void remove_window(Window w, unsigned int dr, unsigned int tw) {
         if(dr == 0) free(c);
         if(desktops[current_desktop].numwins < 3) growth = 0;
         else growth = growth*(desktops[current_desktop].numwins-1)/desktops[current_desktop].numwins;
+        if(nmaster > 0 && nmaster == (desktops[current_desktop].numwins-1)) nmaster -= 1;
         save_desktop(current_desktop);
         if(mode != 4) tile();
         warp_pointer();
@@ -480,8 +481,7 @@ void select_desktop(unsigned int i) {
 
 void more_master (const Arg arg) {
     if(arg.i > 0) {
-        if((desktops[current_desktop].numwins < 3) ||
-        (nmaster == (desktops[current_desktop].numwins-2))) return;
+        if((desktops[current_desktop].numwins < 3) || (nmaster == (desktops[current_desktop].numwins-2))) return;
         nmaster += 1;
     } else {
         if(nmaster == 0) return;
@@ -489,7 +489,7 @@ void more_master (const Arg arg) {
     }
     save_desktop(current_desktop);
     tile();
-    update_current();
+    //update_current();
 }
 
 void tile() {
