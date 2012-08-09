@@ -482,10 +482,10 @@ void more_master (const Arg arg) {
     if(arg.i > 0) {
         if((desktops[current_desktop].numwins < 3) ||
         (nmaster == (desktops[current_desktop].numwins-2))) return;
-        nmaster += arg.i;
+        nmaster += 1;
     } else {
         if(nmaster == 0) return;
-        nmaster += arg.i;
+        nmaster -= 1;
     }
     save_desktop(current_desktop);
     tile();
