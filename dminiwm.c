@@ -1,4 +1,4 @@
-/* dminiwm.c [ 0.4.1 ]
+/* dminiwm.c [ 0.4.2 ]
 *
 *  I started this from catwm 31/12/10
 *  Permission is hereby granted, free of charge, to any person obtaining a
@@ -129,7 +129,7 @@ static void warp_pointer();
 static Display *dis;
 static unsigned int bool_quit, current_desktop, previous_desktop, doresize;
 static int growth, sh, sw, master_size, nmaster;
-static unsigned int mode, panel_size, screen;
+static unsigned int mode, panel_size, screen, bdw, numwins;
 static unsigned int win_focus, win_unfocus;
 static int xerror(Display *dis, XErrorEvent *ee);
 static int (*xerrorxlib)(Display *, XErrorEvent *);
@@ -159,11 +159,10 @@ static desktop desktops[DESKTOPS];
 void add_window(Window w, unsigned int tw) {
     client *c,*t, *dummy = head;
 
-    if(tw < 2) // For shifting windows between desktops
-        if(!(c = (client *)calloc(1,sizeof(client)))) {
-            logger("\033[0;31mError calloc!");
-            exit(1);
-        }
+    if(!(c = (client *)calloc(1,sizeof(client)))) {
+        logger("\033[0;31mError calloc!");
+        exit(1);
+    }
 
     if(tw == 0) {
         XClassHint chh = {0};
@@ -220,8 +219,8 @@ void add_window(Window w, unsigned int tw) {
         return;
     } else head = dummy;
     current = c;
-    desktops[current_desktop].numwins += 1;
-    if(growth > 0) growth = growth*(desktops[current_desktop].numwins-1)/desktops[current_desktop].numwins;
+    numwins += 1;
+    if(growth > 0) growth = growth*(numwins-1)/numwins;
     else growth = 0;
     save_desktop(current_desktop);
     // for folow mouse
@@ -257,7 +256,7 @@ void remove_window(Window w, unsigned int dr, unsigned int tw) {
         head = dummy;
         XUngrabButton(dis, AnyButton, AnyModifier, c->win);
         XUnmapWindow(dis, c->win);
-        desktops[current_desktop].numwins -= 1;
+        numwins -= 1;
         if(head != NULL) {
             for(t=head;t;t=t->next) {
                 if(t->order > c->order) t->order--;
@@ -265,9 +264,9 @@ void remove_window(Window w, unsigned int dr, unsigned int tw) {
             }
         } else current = NULL;
         if(dr == 0) free(c);
-        if(desktops[current_desktop].numwins < 3) growth = 0;
-        else growth = growth*(desktops[current_desktop].numwins-1)/desktops[current_desktop].numwins;
-        if(nmaster > 0 && nmaster == (desktops[current_desktop].numwins-1)) nmaster -= 1;
+        if(numwins < 3) growth = 0;
+        else growth = growth*(numwins-1)/numwins;
+        if(nmaster > 0 && nmaster == (numwins-1)) nmaster -= 1;
         save_desktop(current_desktop);
         if(mode != 4) tile();
         warp_pointer();
@@ -445,22 +444,23 @@ void client_to_desktop(const Arg arg) {
 
     if(arg.i == current_desktop || current == NULL) return;
 
-    // Remove client from current desktop
-    XUnmapWindow(dis,current->win);
-    remove_window(current->win, 1, 0);
-
     // Add client to desktop
     select_desktop(arg.i);
-    add_window(tmp->win, 2);
+    add_window(tmp->win, 0);
     save_desktop(arg.i);
 
     select_desktop(tmp2);
+    // Remove client from current desktop
+    XUnmapWindow(dis,current->win);
+    remove_window(current->win, 0, 0);
+
     update_info();
 }
 
 void save_desktop(unsigned int i) {
     desktops[i].master_size = master_size;
     desktops[i].nmaster = nmaster;
+    desktops[i].numwins = numwins;
     desktops[i].mode = mode;
     desktops[i].growth = growth;
     desktops[i].head = head;
@@ -471,6 +471,7 @@ void save_desktop(unsigned int i) {
 void select_desktop(unsigned int i) {
     master_size = desktops[i].master_size;
     nmaster = desktops[i].nmaster;
+    numwins = desktops[i].numwins;
     mode = desktops[i].mode;
     growth = desktops[i].growth;
     head = desktops[i].head;
@@ -481,7 +482,7 @@ void select_desktop(unsigned int i) {
 
 void more_master (const Arg arg) {
     if(arg.i > 0) {
-        if((desktops[current_desktop].numwins < 3) || (nmaster == (desktops[current_desktop].numwins-2))) return;
+        if((numwins < 3) || (nmaster == (numwins-2))) return;
         nmaster += 1;
     } else {
         if(nmaster == 0) return;
@@ -503,16 +504,16 @@ void tile() {
     // If only one window
     if(mode != 4 && head != NULL && head->next == NULL) {
         if(mode == 1) XMapWindow(dis, current->win);
-        XMoveResizeWindow(dis,head->win,0,y,sw+2*BORDER_WIDTH,sh+2*BORDER_WIDTH);
+        XMoveResizeWindow(dis,head->win,0,y,sw+2*bdw,sh+2*bdw);
     } else if(head != NULL) {
         switch(mode) {
             case 0: /* Vertical */
             	// Master window
             	if(nmaster < 1)
-                    XMoveResizeWindow(dis,head->win,0,y,master_size - BORDER_WIDTH,sh - BORDER_WIDTH);
+                    XMoveResizeWindow(dis,head->win,0,y,master_size - bdw,sh - bdw);
                 else {
                     for(d=head;d;d=d->next) {
-                        XMoveResizeWindow(dis,d->win,0,ypos,master_size - BORDER_WIDTH,sh/(nmaster+1) - BORDER_WIDTH);
+                        XMoveResizeWindow(dis,d->win,0,ypos,master_size - bdw,sh/(nmaster+1) - bdw);
                         if(x == nmaster) break;
                         ypos += sh/(nmaster+1); x++;
                     }
@@ -520,25 +521,25 @@ void tile() {
 
                 // Stack
                 if(d == NULL) d = head;
-                n = desktops[current_desktop].numwins - (nmaster+1);
-                XMoveResizeWindow(dis,d->next->win,master_size + BORDER_WIDTH,y,sw-master_size-(2*BORDER_WIDTH),(sh/n)+growth - BORDER_WIDTH);
+                n = numwins - (nmaster+1);
+                XMoveResizeWindow(dis,d->next->win,master_size + bdw,y,sw-master_size-(2*bdw),(sh/n)+growth - bdw);
                 y += (sh/n)+growth;
                 for(c=d->next->next;c;c=c->next) {
-                    XMoveResizeWindow(dis,c->win,master_size + BORDER_WIDTH,y,sw-master_size-(2*BORDER_WIDTH),(sh/n)-(growth/(n-1)) - BORDER_WIDTH);
+                    XMoveResizeWindow(dis,c->win,master_size + bdw,y,sw-master_size-(2*bdw),(sh/n)-(growth/(n-1)) - bdw);
                     y += (sh/n)-(growth/(n-1));
                 }
                 break;
             case 1: /* Fullscreen */
-                XMoveResizeWindow(dis,current->win,0,y,sw+2*BORDER_WIDTH,sh+2*BORDER_WIDTH);
+                XMoveResizeWindow(dis,current->win,0,y,sw+2*bdw,sh+2*bdw);
                 XMapWindow(dis, current->win);
                 break;
             case 2: /* Horizontal */
             	// Master window
             	if(nmaster < 1)
-                    XMoveResizeWindow(dis,head->win,xpos,ypos,sw-BORDER_WIDTH,master_size-BORDER_WIDTH);
+                    XMoveResizeWindow(dis,head->win,xpos,ypos,sw-bdw,master_size-bdw);
                 else {
                     for(d=head;d;d=d->next) {
-                        XMoveResizeWindow(dis,d->win,xpos,ypos,sw/(nmaster+1)-BORDER_WIDTH,master_size-BORDER_WIDTH);
+                        XMoveResizeWindow(dis,d->win,xpos,ypos,sw/(nmaster+1)-bdw,master_size-bdw);
                         if(x == nmaster) break;
                         xpos += sw/(nmaster+1); x++;
                     }
@@ -546,16 +547,16 @@ void tile() {
 
                 // Stack
                 if(d == NULL) d = head;
-                n = desktops[current_desktop].numwins - (nmaster+1);
-                XMoveResizeWindow(dis,d->next->win,0,y+master_size + BORDER_WIDTH,(sw/n)+growth-BORDER_WIDTH,sh-master_size-(2*BORDER_WIDTH));
+                n = numwins - (nmaster+1);
+                XMoveResizeWindow(dis,d->next->win,0,y+master_size + bdw,(sw/n)+growth-bdw,sh-master_size-(2*bdw));
                 msw = (sw/n)+growth;
                 for(c=d->next->next;c;c=c->next) {
-                    XMoveResizeWindow(dis,c->win,msw,y+master_size + BORDER_WIDTH,(sw/n)-(growth/(n-1)) - BORDER_WIDTH,sh-master_size-(2*BORDER_WIDTH));
+                    XMoveResizeWindow(dis,c->win,msw,y+master_size + bdw,(sw/n)-(growth/(n-1)) - bdw,sh-master_size-(2*bdw));
                     msw += (sw/n)-(growth/(n-1));
                 }
                 break;
             case 3: // Grid
-                x = desktops[current_desktop].numwins;
+                x = numwins;
                 for(xpos=0;xpos<=x;xpos++) {
                     if(xpos == 3 || xpos == 7 || xpos == 10 || xpos == 17) nrows++;
                     if(xpos == 5 || xpos == 13 || xpos == 21) ncols++;
@@ -584,7 +585,7 @@ void tile() {
                         ypos -= growth;
                     }
                     wdt = (xpos > 0) ? ssw : msw;
-                    XMoveResizeWindow(dis,d->win,xpos,ypos,wdt-BORDER_WIDTH,ht-BORDER_WIDTH);
+                    XMoveResizeWindow(dis,d->win,xpos,ypos,wdt-bdw,ht-bdw);
                     ht = sh/nrows;
                     ypos -= ht; n++;
                 }
@@ -603,7 +604,7 @@ void update_current() {
     client *c; unsigned int border;
 
     if(head == NULL) return;
-    border = ((head->next == NULL) || (mode == 1)) ? 0 : BORDER_WIDTH;
+    border = ((head->next == NULL) || (mode == 1)) ? 0 : bdw;
     for(c=head;c;c=c->next) {
         XSetWindowBorderWidth(dis,c->win,border);
 
@@ -664,13 +665,13 @@ void resize_stack(const Arg arg) {
     if(mode == 4 && current != NULL) {
         current->height += arg.i;
         XMoveResizeWindow(dis,current->win,current->x,current->y,current->width,current->height+arg.i);
-    } else if(nmaster == (desktops[current_desktop].numwins-2)) { return;
+    } else if(nmaster == (numwins-2)) { return;
     } else if(mode == 3) {
         if(arg.i > 0 && ((sh/2+growth) < (sh-100))) growth += arg.i;
         else if(arg.i < 0 && ((sh/2+growth) > 80)) growth += arg.i;
         tile();
-    } else if(desktops[current_desktop].numwins > 2) {
-        unsigned int n = desktops[current_desktop].numwins-1;
+    } else if(numwins > 2) {
+        unsigned int n = numwins-1;
         if(arg.i >0) {
             if((mode != 2 && sh-(growth+sh/n) > (n-1)*70) || (mode == 2 && sw-(growth+sw/n) > (n-1)*70))
                 growth += arg.i;
@@ -760,10 +761,10 @@ void configurerequest(XEvent *e) {
     wc.x = ev->x;
     if(TOP_PANEL == 0) y = panel_size;
     wc.y = ev->y + y;
-    if(ev->width < sw-BORDER_WIDTH) wc.width = ev->width;
-    else wc.width = sw+BORDER_WIDTH;
-    if(ev->height < sh-BORDER_WIDTH-y) wc.height = ev->height;
-    else wc.height = sh+BORDER_WIDTH;
+    if(ev->width < sw-bdw) wc.width = ev->width;
+    else wc.width = sw+bdw;
+    if(ev->height < sh-bdw-y) wc.height = ev->height;
+    else wc.height = sh+bdw;
     wc.border_width = 0;
     wc.sibling = ev->above;
     wc.stack_mode = ev->detail;
@@ -794,7 +795,7 @@ void maprequest(XEvent *e) {
         add_window(ev->window, 1); 
         if((attr.y + attr.height) > sh)
             XMoveResizeWindow(dis,ev->window,attr.x,y,attr.width,attr.height-10);
-        XSetWindowBorderWidth(dis,ev->window,BORDER_WIDTH);
+        XSetWindowBorderWidth(dis,ev->window,bdw);
         XSetWindowBorder(dis,ev->window,win_focus);
         XMapWindow(dis, ev->window);
         XSetInputFocus(dis,ev->window,RevertToParent,CurrentTime);
@@ -954,6 +955,7 @@ void kill_client() {
     if(head == NULL) return;
     kill_client_now(current->win);
     remove_window(current->win, 0, 0);
+    update_info();
 }
 
 void kill_client_now(Window w) {
@@ -1019,10 +1021,11 @@ void setup() {
     root = RootWindow(dis,screen);
 
     // Screen width and height
-    panel_size = PANEL_HEIGHT;
-    sw = XDisplayWidth(dis,screen) - BORDER_WIDTH;
-    sh = (XDisplayHeight(dis,screen) - panel_size) - BORDER_WIDTH;
+    sw = XDisplayWidth(dis,screen) - bdw;
+    sh = (XDisplayHeight(dis,screen) - panel_size) - bdw;
 
+    bdw = BORDER_WIDTH;
+    panel_size = PANEL_HEIGHT;
     // For having the panel shown at startup or not
     if(SHOW_BAR > 0) toggle_panel();
     // Colors
