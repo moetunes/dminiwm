@@ -1,5 +1,6 @@
 21/9/12
   Fix for fullscreen app being too tall
+  Add border to first opened window in stacking mode
 
 9/8/12
   In vertical or horizontal mode can now add windows to the master area
