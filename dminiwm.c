@@ -504,7 +504,7 @@ void tile() {
     // If only one window
     if(mode != 4 && head != NULL && head->next == NULL) {
         if(mode == 1) XMapWindow(dis, current->win);
-        XMoveResizeWindow(dis,head->win,0,y,sw+2*bdw,sh+2*bdw);
+        XMoveResizeWindow(dis,head->win,0,y,sw+bdw,sh+bdw);
     } else if(head != NULL) {
         switch(mode) {
             case 0: /* Vertical */
@@ -530,7 +530,7 @@ void tile() {
                 }
                 break;
             case 1: /* Fullscreen */
-                XMoveResizeWindow(dis,current->win,0,y,sw+2*bdw,sh+2*bdw);
+                XMoveResizeWindow(dis,current->win,0,y,sw+bdw,sh+bdw);
                 XMapWindow(dis, current->win);
                 break;
             case 2: /* Horizontal */
