@@ -1,7 +1,11 @@
+25/9/12
+  Fix window positioning in vertical
+  Remove extra XUnmapWindow in client_to_desktop()
+
 24/9/12
   Fix for existing window/s not being unmapped in fullscreem mode
     when new window opened
-    Bar os toggled on a per desktop basis
+  Bar is toggled on a per desktop basis
 
 21/9/12
   Fix for fullscreen app being too tall

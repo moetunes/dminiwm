@@ -453,7 +453,7 @@ void client_to_desktop(const Arg arg) {
 
     select_desktop(tmp2);
     // Remove client from current desktop
-    XUnmapWindow(dis,current->win);
+    //XUnmapWindow(dis,current->win);
     remove_window(current->win, 0, 0);
 
     update_info();
@@ -812,10 +812,6 @@ void maprequest(XEvent *e) {
         return;
     }
 
-    if(mode ==1)
-        for(c=head;c;c=c->next)
-            XUnmapWindow(dis, c->win);
-
     XClassHint ch = {0};
     unsigned int i=0, j=0, tmp = current_desktop;
     if(XGetClassHint(dis, ev->window, &ch))
@@ -845,6 +841,7 @@ void maprequest(XEvent *e) {
     if(ch.res_name) XFree(ch.res_name);
 
     add_window(ev->window, 0);
+    if(mode ==1) XUnmapWindow(dis, head->next->win);
     if(mode != 4) tile();
     if(mode != 1) XMapWindow(dis,ev->window);
     warp_pointer();
