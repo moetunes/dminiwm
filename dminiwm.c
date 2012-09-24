@@ -526,7 +526,7 @@ void tile() {
                 // Stack
                 if(d == NULL) d = head;
                 n = numwins - (nmaster+1);
-                XMoveResizeWindow(dis,d->next->win,master_size + bdw,y,sw-master_size-(2*bdw),(sh/n)+growth - 2*bdw);
+                XMoveResizeWindow(dis,d->next->win,master_size + bdw,y,sw-master_size-(2*bdw),(sh/n)+growth - bdw);
                 y += (sh/n)+growth;
                 for(c=d->next->next;c;c=c->next) {
                     XMoveResizeWindow(dis,c->win,master_size + bdw,y,sw-master_size-(2*bdw),(sh/n)-(growth/(n-1)) - bdw);
@@ -1040,7 +1040,7 @@ void setup() {
     sh = XDisplayHeight(dis,screen) - (panel_size+bdw);
 
     // For having the panel shown at startup or not
-    if(SHOW_BAR > 0) toggle_panel();
+    showbar = (SHOW_BAR > 0) ? 1 : 0;
 
     // Colors
     win_focus = getcolor(FOCUS);
@@ -1058,7 +1058,7 @@ void setup() {
         desktops[i].nmaster = 0;
         desktops[i].mode = DEFAULT_MODE;
         desktops[i].growth = 0;
-        desktops[i].showbar = 0;
+        desktops[i].showbar = showbar;
         desktops[i].numwins = 0;
         desktops[i].head = NULL;
         desktops[i].current = NULL;
