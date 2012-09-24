@@ -806,6 +806,10 @@ void maprequest(XEvent *e) {
         return;
     }
 
+    if(mode ==1)
+        for(c=head;c;c=c->next)
+            XUnmapWindow(dis, c->win);
+
     XClassHint ch = {0};
     unsigned int i=0, j=0, tmp = current_desktop;
     if(XGetClassHint(dis, ev->window, &ch))
