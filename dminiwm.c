@@ -441,10 +441,10 @@ void follow_client_to_desktop(const Arg arg) {
 }
 
 void client_to_desktop(const Arg arg) {
+    if(arg.i == current_desktop || current == NULL) return;
+
     client *tmp = current;
     unsigned int tmp2 = current_desktop;
-
-    if(arg.i == current_desktop || current == NULL) return;
 
     // Add client to desktop
     select_desktop(arg.i);
@@ -812,6 +812,9 @@ void maprequest(XEvent *e) {
         return;
     }
 
+    if(mode ==1) 
+        for(c=head;c;c=c->next)
+            XUnmapWindow(dis, head->next->win);
     XClassHint ch = {0};
     unsigned int i=0, j=0, tmp = current_desktop;
     if(XGetClassHint(dis, ev->window, &ch))
@@ -841,7 +844,6 @@ void maprequest(XEvent *e) {
     if(ch.res_name) XFree(ch.res_name);
 
     add_window(ev->window, 0);
-    if(mode ==1) XUnmapWindow(dis, head->next->win);
     if(mode != 4) tile();
     if(mode != 1) XMapWindow(dis,ev->window);
     warp_pointer();
