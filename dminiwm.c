@@ -1,4 +1,4 @@
-/* dminiwm.c [ 0.4.2 ]
+/* dminiwm.c [ 0.4.3 ]
 *
 *  I started this from catwm 31/12/10
 *  Permission is hereby granted, free of charge, to any person obtaining a
@@ -77,7 +77,7 @@ typedef struct {
 } Positional;
 
 // Functions
-static void add_window(Window w, unsigned int tw);
+static void add_window(Window w, unsigned int tw, client *cl);
 static void buttonpress(XEvent *e);
 static void buttonrelease(XEvent *e);
 static void change_desktop(const Arg arg);
@@ -156,15 +156,16 @@ static void (*events[LASTEvent])(XEvent *e) = {
 static desktop desktops[DESKTOPS];
 
 /* ***************************** Window Management ******************************* */
-void add_window(Window w, unsigned int tw) {
+void add_window(Window w, unsigned int tw, client *cl) {
     client *c,*t, *dummy = head;
 
-    if(!(c = (client *)calloc(1,sizeof(client)))) {
+    if(cl != NULL) c = cl;
+    else if(!(c = (client *)calloc(1,sizeof(client)))) {
         logger("\033[0;31mError calloc!");
         exit(1);
     }
 
-    if(tw == 0) {
+    if(tw == 0 && cl == NULL) {
         XClassHint chh = {0};
         unsigned int i, j=0;
         if(XGetClassHint(dis, w, &chh)) {
@@ -446,15 +447,16 @@ void client_to_desktop(const Arg arg) {
     client *tmp = current;
     unsigned int tmp2 = current_desktop;
 
+    // Remove client from current desktop
+    //XUnmapWindow(dis,current->win);
+    remove_window(current->win, 1, 0);
+
     // Add client to desktop
     select_desktop(arg.i);
-    add_window(tmp->win, 0);
+    add_window(tmp->win, 0, tmp);
     save_desktop(arg.i);
 
     select_desktop(tmp2);
-    // Remove client from current desktop
-    //XUnmapWindow(dis,current->win);
-    remove_window(current->win, 0, 0);
 
     update_info();
 }
@@ -802,7 +804,7 @@ void maprequest(XEvent *e) {
 
    	Window trans = None;
     if (XGetTransientForHint(dis, ev->window, &trans) && trans != None) {
-        add_window(ev->window, 1); 
+        add_window(ev->window, 1, NULL); 
         if((attr.y + attr.height) > sh)
             XMoveResizeWindow(dis,ev->window,attr.x,y,attr.width,attr.height-10);
         XSetWindowBorderWidth(dis,ev->window,bdw);
@@ -823,7 +825,7 @@ void maprequest(XEvent *e) {
                 for(c=head;c;c=c->next)
                     if(ev->window == c->win)
                         ++j;
-                if(j < 1) add_window(ev->window, 0);
+                if(j < 1) add_window(ev->window, 0, NULL);
                 if(tmp == convenience[i].preferredd-1) {
                     tile();
                     XMapWindow(dis, ev->window);
@@ -841,7 +843,7 @@ void maprequest(XEvent *e) {
     if(ch.res_class) XFree(ch.res_class);
     if(ch.res_name) XFree(ch.res_name);
 
-    add_window(ev->window, 0);
+    add_window(ev->window, 0, NULL);
     if(mode != 4) tile();
     if(mode != 1) XMapWindow(dis,ev->window);
     warp_pointer();

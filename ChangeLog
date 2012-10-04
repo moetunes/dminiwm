@@ -1,3 +1,6 @@
+5/10/12
+  Changed client_to_desktop to keep client values
+
 25/9/12
   Fix window positioning in vertical
   Remove extra XUnmapWindow in client_to_desktop()

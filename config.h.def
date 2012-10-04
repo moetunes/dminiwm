@@ -1,4 +1,4 @@
- /* config.h for dminiwm.c [ 0.4.2 ] */
+ /* config.h for dminiwm.c [ 0.4.3 ] */
 
 #ifndef CONFIG_H
 #define CONFIG_H
