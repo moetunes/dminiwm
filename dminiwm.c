@@ -1039,7 +1039,8 @@ void setup() {
     sh = XDisplayHeight(dis,screen) - (panel_size+bdw);
 
     // For having the panel shown at startup or not
-    showbar = (SHOW_BAR > 0) ? 1 : 0;
+    showbar = SHOW_BAR;
+    if(showbar != 0) toggle_panel();
 
     // Colors
     win_focus = getcolor(FOCUS);
