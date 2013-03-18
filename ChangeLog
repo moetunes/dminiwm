@@ -1,3 +1,9 @@
+10/3/13
+  Combine move_left and move_right functions into move_sideways
+
+7/3/13
+  Check for a already running window manager
+
 5/10/12
   Changed client_to_desktop to keep client values
 

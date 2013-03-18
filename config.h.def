@@ -1,8 +1,9 @@
- /* config.h for dminiwm.c [ 0.4.3 ] */
+ /* config.h for dminiwm.c [ 0.4.4 ] */
 
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#define DESKTOPS        6  /* Must edit DESKTOPCHANGE keys to suit */
 #define MOD1            Mod1Mask
 #define MOD4            Mod4Mask
 #define OUTPUT_INFO     0 /* 1=Don't 0=Output info for bipolarbar */
@@ -15,12 +16,11 @@
 #define ATTACH_ASIDE    1  /* 0=TRUE, 1=New window is master */
 #define TOP_STACK       1  /* 0=TRUE, 1=New window added to bottom of stack when using ATTACH_ASIDE */
 #define DEFAULT_MODE    0  /* 0=Vertical, 1=Fullscreen 2=Horizontal 3=grid*/
-// Only one of FOLLOW_MOUSE and CLICK_TO_FOCUS should be zero
+/* Only one of FOLLOW_MOUSE and CLICK_TO_FOCUS should be zero */
 #define FOLLOW_MOUSE    1  /* 1=Don't 0=Focus the window the mouse just entered */
 #define CLICK_TO_FOCUS  0  /* 1=Don't 0=Focus an unfocused window when clicked */
-#define DESKTOPS        6  /* Must edit DESKTOPCHANGE keys to suit */
 
-// Colors
+/* Colors */
 #define FOCUS           "#664422" // dkorange
 #define UNFOCUS         "#004050" // blueish
 
@@ -61,7 +61,7 @@ const char* shutdowncmd[]   = {"sudo","shutdown","-h","now",NULL};
     {  MOD4|ShiftMask,   K,        client_to_desktop, {.i = N}},
 
 static key keys[] = {
-    // MOD               KEY             FUNCTION            ARGS
+    /* MOD               KEY             FUNCTION            ARGS */
     {  MOD1,             XK_h,          resize_master,     {.i = 10}},
     {  MOD1,             XK_l,          resize_master,     {.i = -10}},
     {  MOD1,             XK_c,          kill_client,       {NULL}},
@@ -78,8 +78,8 @@ static key keys[] = {
     {  MOD1,             XK_Down,       spawn,             {.com = voldowncmd}},
     {  MOD1|ShiftMask,   XK_j,          move_up,           {.i = -10}},
     {  MOD1|ShiftMask,   XK_k,          move_down,         {.i = 10}},
-    {  MOD1|ShiftMask,   XK_o,          move_left,         {.i = -10}},
-    {  MOD1|ShiftMask,   XK_p,          move_right,        {.i = 10}},
+    {  MOD1|ShiftMask,   XK_o,          move_sideways,     {.i = -10}},//left
+    {  MOD1|ShiftMask,   XK_p,          move_sideways,     {.i = 10}},//right
     {  MOD1|ShiftMask,   XK_Return,     swap_master,       {NULL}},
     {  MOD1|ShiftMask,   XK_g,          switch_mode,       {.i = 3}}, // grid
     {  MOD1|ShiftMask,   XK_h,          switch_mode,       {.i = 2}}, // horizontal
