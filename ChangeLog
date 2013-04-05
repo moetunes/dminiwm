@@ -1,3 +1,6 @@
+6/4/13
+  Minimise config.h.def
+
 10/3/13
   Combine move_left and move_right functions into move_sideways
 

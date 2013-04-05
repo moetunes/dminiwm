@@ -823,6 +823,13 @@ void destroynotify(XEvent *e) {
     save_desktop(tmp);
     for(i=current_desktop;i<current_desktop+DESKTOPS;++i) {
         select_desktop(i%DESKTOPS);
+        for(c=head;c;c=c->next)
+            if(ev->window == c->win) {
+                remove_window(ev->window, 0, 0);
+                select_desktop(tmp);
+                update_info();
+                return;
+            }
         if(transient != NULL) {
             for(c=transient;c;c=c->next)
                 if(ev->window == c->win) {
@@ -831,13 +838,6 @@ void destroynotify(XEvent *e) {
                     return;
                 }
         }
-        for(c=head;c;c=c->next)
-            if(ev->window == c->win) {
-                remove_window(ev->window, 0, 0);
-                select_desktop(tmp);
-                update_info();
-                return;
-            }
     }
     select_desktop(tmp);
 }
