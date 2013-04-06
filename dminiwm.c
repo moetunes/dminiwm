@@ -330,7 +330,7 @@ void move_sideways(const Arg arg) {
 }
 
 void swap_master() {
-    if(numwins < 3 || mode == 1 || mode == 4) return;
+    if(numwins < 2 || mode == 1 || mode == 4) return;
     Window tmp;
 
     if(current == head) {
@@ -717,6 +717,7 @@ void keypress(XEvent *e) {
     XKeyEvent *ev = &e->xkey;
 
     keysym = XkbKeycodeToKeysym(dis, (KeyCode)ev->keycode, 0, 0);
+    fprintf(stderr, "pressed key %s\n", XKeysymToString(keysym));
     for(i=0;i<TABLENGTH(keys); ++i) {
         if(keysym == keys[i].keysym && CLEANMASK(keys[i].mod) == CLEANMASK(ev->state)) {
             if(keys[i].function)
