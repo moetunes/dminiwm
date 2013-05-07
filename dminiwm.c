@@ -167,7 +167,8 @@ void add_window(Window w, unsigned int tw, client *cl) {
         unsigned int i, j=0;
         if(XGetClassHint(dis, w, &chh)) {
             for(i=0;i<TABLENGTH(positional);++i)
-                if(strcmp(chh.res_class, positional[i].class) == 0) {
+                if((strcmp(chh.res_class, positional[i].class) == 0) ||
+                  (strcmp(chh.res_name, positional[i].class) == 0)) {
                     XMoveResizeWindow(dis,w,positional[i].x,positional[i].y,positional[i].width,positional[i].height);
                     ++j;
                 }
@@ -785,7 +786,8 @@ void maprequest(XEvent *e) {
     unsigned int i=0, j=0, tmp = current_desktop;
     if(XGetClassHint(dis, ev->window, &ch))
         for(i=0;i<TABLENGTH(convenience);++i)
-            if(strcmp(ch.res_class, convenience[i].class) == 0) {
+            if((strcmp(ch.res_class, convenience[i].class) == 0) ||
+              (strcmp(ch.res_name, convenience[i].class) == 0)) {
                 save_desktop(tmp);
                 select_desktop(convenience[i].preferredd-1);
                 for(c=head;c;c=c->next)
