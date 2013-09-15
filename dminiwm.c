@@ -1,4 +1,4 @@
-/* dminiwm.c [ 0.4.4 ]
+/* dminiwm.c [ 0.4.5 ]
 *
 *  I started this from catwm 31/12/10
 *  Permission is hereby granted, free of charge, to any person obtaining a
@@ -579,30 +579,34 @@ void tile() {
 
 void update_current() {
     if(head == NULL) return;
-    client *c; unsigned int border;
+    client *c, *d; unsigned int border;
 
     border = ((head->next == NULL && mode != 4) || (mode == 1)) ? 0 : bdw;
-    for(c=head;c;c=c->next) {
-        XSetWindowBorderWidth(dis,c->win,border);
+    for(c=head;c->next;c=c->next);
+    for(d=c;d;d=d->prev) {
+        XSetWindowBorderWidth(dis,d->win,border);
 
-        if(c != current) {
-            if(c->order < current->order) ++c->order;
-            XSetWindowBorder(dis,c->win,win_unfocus);
+        if(d != current) {
+            if(d->order < current->order) ++d->order;
+            XSetWindowBorder(dis,d->win,win_unfocus);
             if(CLICK_TO_FOCUS == 0)
-                XGrabButton(dis, AnyButton, AnyModifier, c->win, True, ButtonPressMask|ButtonReleaseMask, GrabModeAsync, GrabModeAsync, None, None);
+                XGrabButton(dis, AnyButton, AnyModifier, d->win, True, ButtonPressMask|ButtonReleaseMask, GrabModeAsync, GrabModeAsync, None, None);
         }
         else {
             // "Enable" current window
-            XSetWindowBorder(dis,c->win,win_focus);
-            XSetInputFocus(dis,c->win,RevertToParent,CurrentTime);
-            XRaiseWindow(dis,c->win);
+            XSetWindowBorder(dis,d->win,win_focus);
+            XSetInputFocus(dis,d->win,RevertToParent,CurrentTime);
+            XRaiseWindow(dis,d->win);
             if(CLICK_TO_FOCUS == 0)
-                XUngrabButton(dis, AnyButton, AnyModifier, c->win);
+                XUngrabButton(dis, AnyButton, AnyModifier, d->win);
         }
     }
     current->order = 0;
     if(transient != NULL) {
-        XRaiseWindow(dis,transient->win);
+        for(c=transient;c->next;c=c->next);
+        for(d=c;d;d=d->prev)
+            XRaiseWindow(dis,d->win);
+        XSetInputFocus(dis,transient->win,RevertToParent,CurrentTime);
     }
     warp_pointer();
     XSync(dis, False);
@@ -718,7 +722,7 @@ void keypress(XEvent *e) {
     XKeyEvent *ev = &e->xkey;
 
     keysym = XkbKeycodeToKeysym(dis, (KeyCode)ev->keycode, 0, 0);
-    fprintf(stderr, "pressed key %s\n", XKeysymToString(keysym));
+    //fprintf(stderr, "pressed key %s\n", XKeysymToString(keysym));
     for(i=0;i<TABLENGTH(keys); ++i) {
         if(keysym == keys[i].keysym && CLEANMASK(keys[i].mod) == CLEANMASK(ev->state)) {
             if(keys[i].function)
