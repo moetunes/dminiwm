@@ -27,6 +27,7 @@
 #include <X11/Xproto.h>
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
+#include <X11/Xlocale.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -1010,6 +1011,11 @@ void setup() {
     // Screen width and height
     sw = XDisplayWidth(dis,screen) - bdw;
     sh = XDisplayHeight(dis,screen) - (panel_size+bdw);
+
+    char *loc;
+    loc = setlocale(LC_ALL, "");
+    if (!loc || !strcmp(loc, "C") || !strcmp(loc, "POSIX") || !XSupportsLocale())
+        logger("LOCALE FAILED");
 
     // For having the panel shown at startup or not
     showbar = SHOW_BAR;
