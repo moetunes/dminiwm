@@ -1,3 +1,6 @@
+8/12/14
+  Added option to set a different mode for each desktop in config.h
+
 10/4/14
   Add locale so fonts in firefox and maybe others work
 

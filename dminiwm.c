@@ -1005,7 +1005,6 @@ void setup() {
     screen = DefaultScreen(dis);
     root = RootWindow(dis,screen);
 
-    XSelectInput(dis,root,SubstructureRedirectMask);
     bdw = BORDER_WIDTH;
     panel_size = PANEL_HEIGHT;
     // Screen width and height
@@ -1029,19 +1028,20 @@ void setup() {
     grabkeys();
 
     // Master size
-    master_size = (mode == 2) ? sh*MASTER_SIZE : sw*MASTER_SIZE;
 
     // Set up all desktop
     for(i=0;i<TABLENGTH(desktops);++i) {
-        desktops[i].master_size = master_size;
+        //desktops[i].master_size = master_size;
         desktops[i].nmaster = 0;
-        desktops[i].mode = DEFAULT_MODE;
         desktops[i].growth = 0;
         desktops[i].showbar = showbar;
         desktops[i].numwins = 0;
         desktops[i].head = NULL;
         desktops[i].current = NULL;
         desktops[i].transient = NULL;
+        if(MODES[i] > 0 && MODES[i] < 6) desktops[i].mode = MODES[i]-1;
+        else desktops[i].mode = DEFAULT_MODE-1;
+        desktops[i].master_size = (desktops[i].mode == 2) ? sh*MASTER_SIZE : sw*MASTER_SIZE;
     }
 
     // Select first desktop by default

@@ -15,7 +15,9 @@
 #define BORDER_WIDTH    2
 #define ATTACH_ASIDE    1  /* 0=TRUE, 1=New window is master */
 #define TOP_STACK       1  /* 0=TRUE, 1=New window added to bottom of stack when using ATTACH_ASIDE */
-#define DEFAULT_MODE    0  /* 0=Vertical, 1=Fullscreen 2=Horizontal 3=grid*/
+#define DEFAULT_MODE    1  /* 1=Vertical 2=Fullscreen 3=Horizontal 4=grid 5=stacking */
+/* Set mode for each desktop - defaults to DEFAULT_MODE */
+const unsigned int MODES[] = {1, 2, 3, 4, 5};
 /* Only one of FOLLOW_MOUSE and CLICK_TO_FOCUS should be zero */
 #define FOLLOW_MOUSE    1  /* 1=Don't 0=Focus the window the mouse just entered */
 #define CLICK_TO_FOCUS  0  /* 1=Don't 0=Focus an unfocused window when clicked */
